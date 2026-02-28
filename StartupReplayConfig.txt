@@ -1,0 +1,23 @@
+package com.acme.graavl.config;
+
+public class StartupReplayConfig {
+
+    private boolean enabled;
+    private String state;   // PENDING_PUBLISH
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+}

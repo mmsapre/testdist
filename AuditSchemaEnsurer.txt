@@ -1,0 +1,41 @@
+package com.acme.graavl.audit;
+
+import org.springframework.r2dbc.core.DatabaseClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+public class AuditSchemaEnsurer {
+
+  private final DatabaseClient db;
+  private final String table;
+
+  public AuditSchemaEnsurer(DatabaseClient db, String table) {
+    this.db = db;
+    this.table = table;
+  }
+
+  public Mono<Void> ensure() {
+    String ddl = """
+      CREATE TABLE IF NOT EXISTS %s (
+        id BIGSERIAL PRIMARY KEY,
+        load_row_id BIGINT NOT NULL,
+        data_key VARCHAR(100) NOT NULL,
+        service_name VARCHAR(120) NOT NULL,
+        state VARCHAR(40) NOT NULL,
+        publish_message VARCHAR(4000),
+        request_id VARCHAR(120),
+        created_at TIMESTAMP NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_pending
+        ON %s (data_key, state, created_at);
+      CREATE INDEX IF NOT EXISTS idx_audit_loadrow
+        ON %s (load_row_id);
+      """.formatted(table, table, table);
+
+    return Flux.fromArray(ddl.split(";\\s*\\n"))
+        .map(String::trim)
+        .filter(s -> !s.isBlank())
+        .concatMap(stmt -> db.sql(stmt).fetch().rowsUpdated().then())
+        .then();
+  }
+}

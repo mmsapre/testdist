@@ -1,0 +1,320 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.JdbcReaderConfig;
+import com.acme.graavl.config.ParamConfig;
+import com.acme.graavl.core.NamedParameterStatement;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.exception.GraavlSystemException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jeasy.batch.core.reader.RecordReader;
+import org.jeasy.batch.core.record.GenericRecord;
+import org.jeasy.batch.core.record.Record;
+import org.postgresql.util.PGobject;
+
+import javax.sql.DataSource;
+import java.io.Reader;
+import java.sql.*;
+import java.util.*;
+
+public class JdbcDataKeyReader implements RecordReader<PipelineRecord> {
+
+    private final DataSource ds;
+    private final JdbcReaderConfig config;
+    private final Map<String, String> runtimeParams;
+
+    private Iterator<PipelineRecord> iterator;
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public JdbcDataKeyReader(DataSource ds,
+                             JdbcReaderConfig config,
+                             Map<String, String> runtimeParams) {
+        this.ds = ds;
+        this.config = config;
+        this.runtimeParams = runtimeParams;
+    }
+
+    @Override
+    public void open() {
+
+        List<PipelineRecord> records = new ArrayList<>();
+
+        try (Connection conn = ds.getConnection();
+             NamedParameterStatement nps =
+                     new NamedParameterStatement(conn, config.sql.query)) {
+
+            bindParameters(nps);
+
+            try (ResultSet rs = nps.executeQuery()) {
+
+                ResultSetMetaData meta = rs.getMetaData();
+                int colCount = meta.getColumnCount();
+
+                // collect ALL rows first (no overwrite risk)
+                List<Map<String, Object>> rowMaps = new ArrayList<>();
+
+                while (rs.next()) {
+
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    for (int i = 1; i <= colCount; i++) {
+                        String colName = meta.getColumnLabel(i);
+                        Object rawValue = rs.getObject(i);
+                        row.put(colName, normalizeValue(colName, rawValue));
+                    }
+
+                    rowMaps.add(row);
+                }
+
+                if (rowMaps.isEmpty()) {
+                    iterator = Collections.emptyIterator();
+                    return;
+                }
+
+                switch (config.rowMode.toUpperCase(Locale.ROOT)) {
+
+                    case "ROW" -> {
+                        for (Map<String, Object> row : rowMaps) {
+                            records.add(buildRecordFromRow(row));
+                        }
+                    }
+
+                    case "AGGREGATE" -> {
+                        records.add(buildAggregateRecord(rowMaps));
+                    }
+
+                    case "GROUP_BY_KEY" -> {
+                        records.add(buildGroupedRecord(rowMaps));
+                    }
+
+                    default -> throw new IllegalArgumentException(
+                            "Unknown rowMode: " + config.rowMode
+                    );
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new GraavlSystemException(
+                    "DB_QUERY_FAILURE",
+                    "Failed executing JDBC query",
+                    null,
+                    e
+            );
+        } catch (Exception e) {
+            throw new GraavlSystemException(
+                    "JDBC_READER_FAILURE",
+                    "Unexpected failure in JdbcDataKeyReader",
+                    null,
+                    e
+            );
+        }
+
+        iterator = records.iterator();
+    }
+
+    /* =========================
+       BUILD RECORDS
+       ========================= */
+
+    private PipelineRecord buildRecordFromRow(Map<String, Object> row) throws Exception {
+
+        PipelineRecord r = new PipelineRecord();
+
+        r.rowId = extractLong(row.get("row_id"));
+        r.dataKey = Objects.toString(
+                row.get("data_key"),
+                runtimeParams.get("dataKey")
+        );
+        r.requestId = Objects.toString(row.get("request_id"), null);
+
+        if (config.payloadColumn != null && row.containsKey(config.payloadColumn)) {
+            Object payloadValue = row.get(config.payloadColumn);
+            r.payload = serializePayloadValue(payloadValue);
+            r.payloadType = detectPayloadType(payloadValue);
+        } else {
+            r.payload = mapper.writeValueAsString(row);
+            r.payloadType = "JSON";
+        }
+
+        r.flat = row;
+        return r;
+    }
+
+    private PipelineRecord buildAggregateRecord(List<Map<String, Object>> rows) throws Exception {
+
+        PipelineRecord r = new PipelineRecord();
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put(config.aggregateField, rows);
+
+        Map<String, Object> first = rows.get(0);
+
+        r.rowId = extractLong(first.get("row_id"));
+        r.dataKey = Objects.toString(
+                first.get("data_key"),
+                runtimeParams.get("dataKey")
+        );
+        r.requestId = Objects.toString(first.get("request_id"), null);
+
+        r.payload = mapper.writeValueAsString(payload);
+        r.payloadType = "JSON";
+        r.flat = payload;
+
+        return r;
+    }
+
+    private PipelineRecord buildGroupedRecord(List<Map<String, Object>> rows) throws Exception {
+
+        Map<String, List<Object>> grouped = new LinkedHashMap<>();
+
+        for (Map<String, Object> row : rows) {
+            for (var e : row.entrySet()) {
+                grouped.computeIfAbsent(e.getKey(), k -> new ArrayList<>())
+                       .add(e.getValue());
+            }
+        }
+
+        PipelineRecord r = new PipelineRecord();
+        r.payload = mapper.writeValueAsString(grouped);
+        r.payloadType = "JSON";
+        r.flat = (Map) grouped;
+
+        Map<String, Object> first = rows.get(0);
+        r.rowId = extractLong(first.get("row_id"));
+        r.dataKey = Objects.toString(first.get("data_key"),
+                                     runtimeParams.get("dataKey"));
+        r.requestId = Objects.toString(first.get("request_id"), null);
+
+        return r;
+    }
+
+    /* =========================
+       NORMALIZATION
+       ========================= */
+
+    private Object normalizeValue(String columnName, Object value) {
+
+        if (value == null) return null;
+
+        try {
+            if (value instanceof PGobject pg) {
+                if ("json".equalsIgnoreCase(pg.getType()) ||
+                    "jsonb".equalsIgnoreCase(pg.getType())) {
+                    return parseJsonSafely(pg.getValue());
+                }
+                return pg.getValue();
+            }
+
+            if (value instanceof Clob clob) {
+                return clobToString(clob);
+            }
+
+            if (value instanceof String str) {
+                String t = str.trim();
+
+                if (isJsonColumn(columnName) || looksLikeJson(t)) {
+                    return parseJsonSafely(t);
+                }
+                if (isXmlColumn(columnName) || looksLikeXml(t)) {
+                    return t;
+                }
+                return str;
+            }
+
+            return value;
+
+        } catch (Exception e) {
+            throw new GraavlSystemException(
+                    "COLUMN_NORMALIZATION_FAILURE",
+                    "Failed normalizing column " + columnName,
+                    null,
+                    e
+            );
+        }
+    }
+
+    /* =========================
+       HELPERS
+       ========================= */
+
+    private String serializePayloadValue(Object v) throws Exception {
+        if (v instanceof Map || v instanceof List) {
+            return mapper.writeValueAsString(v);
+        }
+        return String.valueOf(v);
+    }
+
+    private boolean isJsonColumn(String c) {
+        return config.jsonColumns != null && config.jsonColumns.contains(c);
+    }
+
+    private boolean isXmlColumn(String c) {
+        return config.xmlColumns != null && config.xmlColumns.contains(c);
+    }
+
+    private boolean looksLikeJson(String s) {
+        return (s.startsWith("{") && s.endsWith("}")) ||
+               (s.startsWith("[") && s.endsWith("]"));
+    }
+
+    private boolean looksLikeXml(String s) {
+        return s.startsWith("<") && s.endsWith(">");
+    }
+
+    private Object parseJsonSafely(String json) {
+        try {
+            return mapper.readValue(json, Object.class);
+        } catch (Exception e) {
+            return json;
+        }
+    }
+
+    private String clobToString(Clob clob) throws Exception {
+        try (Reader reader = clob.getCharacterStream()) {
+            StringBuilder sb = new StringBuilder();
+            char[] buf = new char[2048];
+            int n;
+            while ((n = reader.read(buf)) != -1) {
+                sb.append(buf, 0, n);
+            }
+            return sb.toString();
+        }
+    }
+
+    private String detectPayloadType(Object v) {
+        if (v instanceof String s && looksLikeXml(s)) return "XML";
+        return "JSON";
+    }
+
+    private void bindParameters(NamedParameterStatement nps) throws Exception {
+        if (config.sql.parameters == null) return;
+        for (Map.Entry<String, ParamConfig> e : config.sql.parameters.entrySet()) {
+            nps.setObject(e.getKey(), resolveValue(e.getValue()));
+        }
+    }
+
+    private Object resolveValue(ParamConfig pc) {
+        if (pc.source == null) return null;
+        return switch (pc.source.toLowerCase()) {
+            case "pipeline", "request" -> runtimeParams.get(pc.key);
+            case "static" -> pc.value;
+            case "system" -> System.getProperty(pc.key);
+            case "env" -> System.getenv(pc.key);
+            default -> null;
+        };
+    }
+
+    private long extractLong(Object v) {
+        if (v == null) return 0;
+        if (v instanceof Number n) return n.longValue();
+        return Long.parseLong(v.toString());
+    }
+
+    @Override
+    public Record<PipelineRecord> readRecord() {
+        if (iterator == null || !iterator.hasNext()) return null;
+        return new GenericRecord<>(null, iterator.next());
+    }
+
+    @Override
+    public void close() {}
+}

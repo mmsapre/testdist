@@ -1,0 +1,23 @@
+package com.acme.graavl.config;
+
+public class JdbcReaderConfig {
+
+    private String datasource;
+    private SqlConfig sql;
+
+    public String getDatasource() {
+        return datasource;
+    }
+
+    public void setDatasource(String datasource) {
+        this.datasource = datasource;
+    }
+
+    public SqlConfig getSql() {
+        return sql;
+    }
+
+    public void setSql(SqlConfig sql) {
+        this.sql = sql;
+    }
+}

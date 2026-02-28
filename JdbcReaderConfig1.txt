@@ -1,0 +1,19 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class JdbcReaderConfig {
+
+    public SqlConfig sql;
+
+    public String payloadColumn;
+
+    public List<String> jsonColumns;
+    public List<String> xmlColumns;
+
+    /** ROW | AGGREGATE | GROUP_BY_KEY */
+    public String rowMode = "ROW";
+
+    /** used only when rowMode = AGGREGATE */
+    public String aggregateField = "rows";
+}

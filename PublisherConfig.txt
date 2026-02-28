@@ -1,0 +1,23 @@
+package com.acme.graavl.config;
+
+public class PublisherConfig {
+
+    private boolean enabled;
+    private DedupeConfig dedupe;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public DedupeConfig getDedupe() {
+        return dedupe;
+    }
+
+    public void setDedupe(DedupeConfig dedupe) {
+        this.dedupe = dedupe;
+    }
+}

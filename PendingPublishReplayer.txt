@@ -1,0 +1,37 @@
+package com.acme.graavl.audit;
+
+import org.springframework.r2dbc.core.DatabaseClient;
+import reactor.core.publisher.Flux;
+
+public class PendingPublishReplayer {
+
+  private final DatabaseClient db;
+  private final String table;
+
+  public PendingPublishReplayer(DatabaseClient db, String table) {
+    this.db = db;
+    this.table = table;
+  }
+
+  public Flux<Item> fetchPending(int batchSize) {
+    String sql = """
+      SELECT load_row_id, data_key, request_id
+      FROM %s
+      WHERE state = :state
+      ORDER BY created_at ASC
+      LIMIT :limit
+      """.formatted(table);
+
+    return db.sql(sql)
+        .bind("state", "PENDING_PUBLISH")
+        .bind("limit", batchSize)
+        .map((row, meta) -> new Item(
+            row.get("data_key", String.class),
+            row.get("load_row_id", Long.class),
+            row.get("request_id", String.class)
+        ))
+        .all();
+  }
+
+  public record Item(String dataKey, long loadRowId, String requestId) {}
+}

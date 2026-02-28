@@ -1,0 +1,19 @@
+package com.acme.graavl.validation;
+
+public enum ValidationOutcome {
+
+    PASS(1),
+    PARTIAL_MASK(2),
+    FULL_MASK(3),
+    FILTER(4);
+
+    public final int rank;
+
+    ValidationOutcome(int rank) {
+        this.rank = rank;
+    }
+
+    public static ValidationOutcome from(String s) {
+        return ValidationOutcome.valueOf(s.toUpperCase());
+    }
+}

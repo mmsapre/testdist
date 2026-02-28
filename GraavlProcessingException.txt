@@ -1,0 +1,31 @@
+package com.acme.graavl.exception;
+
+public abstract class GraavlProcessingException extends RuntimeException {
+
+    private final String reason;
+    private final boolean retryable;
+    private final StepContext stepContext;
+
+    protected GraavlProcessingException(String reason,
+                                        String message,
+                                        boolean retryable,
+                                        StepContext stepContext,
+                                        Throwable cause) {
+        super(message, cause);
+        this.reason = reason;
+        this.retryable = retryable;
+        this.stepContext = stepContext;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public boolean isRetryable() {
+        return retryable;
+    }
+
+    public StepContext getStepContext() {
+        return stepContext;
+    }
+}

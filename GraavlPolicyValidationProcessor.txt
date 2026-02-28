@@ -1,0 +1,136 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.exception.*;
+import com.acme.graavl.mask.GraavlMaskEngine;
+import com.acme.graavl.policy.*;
+import com.acme.graavl.validation.*;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.*;
+
+public class GraavlPolicyValidationProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final ValidationConfig cfg;
+    private final PolicyQueryExecutor executor;
+    private final GraavlMaskEngine maskEngine;
+    private final PolicyDecisionAggregator aggregator =
+            new PolicyDecisionAggregator();
+
+    private final JsonPathExtractor jsonExtractor = new JsonPathExtractor();
+    private final XPathExtractor xmlExtractor = new XPathExtractor();
+
+    public GraavlPolicyValidationProcessor(
+            ValidationConfig cfg,
+            PolicyQueryExecutor executor,
+            GraavlMaskEngine maskEngine) {
+
+        this.cfg = cfg;
+        this.executor = executor;
+        this.maskEngine = maskEngine;
+    }
+
+    @Override
+    public PipelineRecord processRecord(Record<PipelineRecord> record) {
+
+        PipelineRecord r = record.getPayload();
+
+        if (!cfg.enabled || cfg.bypass) return r;
+
+        StepContext stepCtx = new StepContext(
+                "GraavlPolicyValidationProcessor",
+                "VALIDATION",
+                r.dataKey,
+                r.rowId
+        );
+
+        try {
+
+            List<PolicyResult> matchedPolicies = new ArrayList<>();
+
+            for (PolicyConfig pc : cfg.policies.values()) {
+
+                ExtractedContext extracted = extract(pc, r);
+
+                matchedPolicies.addAll(
+                        executor.executePolicyQuery(
+                                pc,
+                                extracted.asMap()
+                        )
+                );
+            }
+
+            AggregatedDecision decision =
+                    aggregator.resolve(matchedPolicies);
+
+            if (decision == null) return r;
+
+            applyDecision(decision, r, stepCtx);
+
+            return r;
+
+        } catch (GraavlBusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new GraavlSystemException(
+                    "POLICY_VALIDATION_FAILURE",
+                    "Policy validation failed",
+                    stepCtx,
+                    e
+            );
+        }
+    }
+
+    private ExtractedContext extract(PolicyConfig pc,
+                                     PipelineRecord r) throws Exception {
+
+        ExtractedContext ctx = new ExtractedContext();
+
+        for (var e : pc.extractor.entrySet()) {
+
+            String key = e.getKey();
+            ExtractorConfig ec = e.getValue();
+
+            List<Object> vals =
+                    "JSON_PATH".equalsIgnoreCase(ec.type)
+                            ? jsonExtractor.extract(r.payload, ec)
+                            : xmlExtractor.extract(r.payload, ec);
+
+            ctx.put(key, vals);
+        }
+        return ctx;
+    }
+
+    private void applyDecision(AggregatedDecision d,
+                               PipelineRecord r,
+                               StepContext ctx) {
+
+        switch (d.outcome) {
+
+            case FILTER ->
+                    throw new GraavlBusinessException(
+                            "POLICY_FILTER",
+                            "Filtered by policy id=" + d.policyId,
+                            ctx
+                    );
+
+            case FULL_MASK ->
+                    maskEngine.applyFullMask(r);
+
+            case PARTIAL_MASK ->
+                    maskEngine.applyPartialMask(
+                            r,
+                            d.maskJsonPaths,
+                            d.maskXPaths
+                    );
+
+            case PASS -> {
+                // no-op
+            }
+        }
+    }
+}

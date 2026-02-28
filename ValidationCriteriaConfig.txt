@@ -1,0 +1,21 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class ValidationCriteriaConfig {
+
+    private String name;
+
+    private String domain;
+
+    private String policyKey;
+
+    /**
+     * Key to lookup SQL from policyDb.queries
+     */
+    private String queryName;
+
+    private List<ParameterExtractorConfig> extractors;
+
+    // getters/setters
+}

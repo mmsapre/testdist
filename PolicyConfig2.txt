@@ -1,0 +1,14 @@
+package com.acme.graavl.config;
+
+import java.util.Map;
+
+public class PolicyConfig {
+
+    // extractorKey -> extractor config
+    public Map<String, ExtractorConfig> extractor;
+
+    public String query;
+
+    // sqlParamName -> extractorKey
+    public Map<String, String> parameterMapping;
+}

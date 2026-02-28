@@ -1,0 +1,134 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.JdbcReaderConfig;
+import com.acme.graavl.config.ParamConfig;
+import com.acme.graavl.core.NamedParameterStatement;
+import com.acme.graavl.core.PipelineRecord;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jeasy.batch.core.reader.RecordReader;
+import org.jeasy.batch.core.record.Record;
+import org.jeasy.batch.core.record.GenericRecord;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.*;
+
+public class JdbcDataKeyReader implements RecordReader<PipelineRecord> {
+
+    private final DataSource ds;
+    private final JdbcReaderConfig config;
+    private final Map<String, String> runtimeParams;
+
+    private Iterator<PipelineRecord> iterator;
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public JdbcDataKeyReader(DataSource ds,
+                             JdbcReaderConfig config,
+                             Map<String,String> runtimeParams) {
+        this.ds = ds;
+        this.config = config;
+        this.runtimeParams = runtimeParams;
+    }
+
+    @Override
+    public void open() throws Exception {
+
+        List<PipelineRecord> records = new ArrayList<>();
+
+        try (Connection conn = ds.getConnection();
+             NamedParameterStatement nps =
+                     new NamedParameterStatement(conn, config.sql.query)) {
+
+            bindParameters(nps);
+
+            try (ResultSet rs = nps.executeQuery()) {
+
+                ResultSetMetaData meta = rs.getMetaData();
+                int colCount = meta.getColumnCount();
+
+                while (rs.next()) {
+
+                    Map<String,Object> rowMap = new LinkedHashMap<>();
+
+                    for (int i = 1; i <= colCount; i++) {
+                        String colName = meta.getColumnLabel(i);
+                        Object value = rs.getObject(i);
+                        rowMap.put(colName, value);
+                    }
+
+                    PipelineRecord r = new PipelineRecord();
+
+                    r.rowId = extractLong(rowMap.get("row_id"));
+                    r.dataKey = Optional.ofNullable(rowMap.get("data_key"))
+                            .map(Object::toString)
+                            .orElse(runtimeParams.get("dataKey"));
+
+                    if (rowMap.containsKey("request_id")) {
+                        r.requestId = Objects.toString(rowMap.get("request_id"), null);
+                    }
+
+                    r.payloadType = "JSON";
+                    r.payload = mapper.writeValueAsString(rowMap);
+                    r.flat = rowMap;
+
+                    records.add(r);
+                }
+            }
+        }
+
+        iterator = records.iterator();
+    }
+
+    private void bindParameters(NamedParameterStatement nps) throws Exception {
+
+        if (config.sql.parameters == null) return;
+
+        for (Map.Entry<String, ParamConfig> entry :
+                config.sql.parameters.entrySet()) {
+
+            String paramName = entry.getKey();
+            ParamConfig pc = entry.getValue();
+
+            Object value = resolveValue(pc);
+            nps.setObject(paramName, value);
+        }
+    }
+
+    private Object resolveValue(ParamConfig pc) {
+
+        if (pc.source == null) return null;
+
+        return switch (pc.source.toLowerCase()) {
+
+            case "pipeline", "request" ->
+                    runtimeParams.get(pc.key);
+
+            case "static" ->
+                    pc.value;
+
+            case "system" ->
+                    System.getProperty(pc.key);
+
+            case "env" ->
+                    System.getenv(pc.key);
+
+            default ->
+                    null;
+        };
+    }
+
+    private long extractLong(Object v) {
+        if (v == null) return 0;
+        if (v instanceof Number n) return n.longValue();
+        return Long.parseLong(v.toString());
+    }
+
+    @Override
+    public Record<PipelineRecord> readRecord() {
+        if (iterator == null || !iterator.hasNext()) return null;
+        return new GenericRecord<>(null, iterator.next());
+    }
+
+    @Override
+    public void close() {}
+}

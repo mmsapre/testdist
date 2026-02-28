@@ -1,0 +1,264 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.JdbcReaderConfig;
+import com.acme.graavl.config.ParamConfig;
+import com.acme.graavl.core.NamedParameterStatement;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.exception.GraavlSystemException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jeasy.batch.core.reader.RecordReader;
+import org.jeasy.batch.core.record.Record;
+import org.jeasy.batch.core.record.GenericRecord;
+import org.postgresql.util.PGobject;
+
+import javax.sql.DataSource;
+import java.io.Reader;
+import java.sql.*;
+import java.util.*;
+
+public class JdbcDataKeyReader implements RecordReader<PipelineRecord> {
+
+    private final DataSource ds;
+    private final JdbcReaderConfig config;
+    private final Map<String, String> runtimeParams;
+
+    private Iterator<PipelineRecord> iterator;
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public JdbcDataKeyReader(DataSource ds,
+                             JdbcReaderConfig config,
+                             Map<String, String> runtimeParams) {
+        this.ds = ds;
+        this.config = config;
+        this.runtimeParams = runtimeParams;
+    }
+
+    @Override
+    public void open() {
+
+        List<PipelineRecord> records = new ArrayList<>();
+
+        try (Connection conn = ds.getConnection();
+             NamedParameterStatement nps =
+                     new NamedParameterStatement(conn, config.sql.query)) {
+
+            bindParameters(nps);
+
+            try (ResultSet rs = nps.executeQuery()) {
+
+                ResultSetMetaData meta = rs.getMetaData();
+                int colCount = meta.getColumnCount();
+
+                while (rs.next()) {
+
+                    PipelineRecord r = new PipelineRecord();
+
+                    Map<String, Object> rowMap = new LinkedHashMap<>();
+
+                    for (int i = 1; i <= colCount; i++) {
+
+                        String colName = meta.getColumnLabel(i);
+                        Object rawValue = rs.getObject(i);
+
+                        rowMap.put(colName,
+                                normalizeValue(colName, rawValue));
+                    }
+
+                    r.rowId = extractLong(rowMap.get("row_id"));
+
+                    r.dataKey = Optional.ofNullable(rowMap.get("data_key"))
+                            .map(Object::toString)
+                            .orElse(runtimeParams.get("dataKey"));
+
+                    r.requestId = Objects.toString(rowMap.get("request_id"), null);
+
+                    // If configured payload column present → use directly
+                    if (config.payloadColumn != null &&
+                            rowMap.containsKey(config.payloadColumn)) {
+
+                        Object payloadValue = rowMap.get(config.payloadColumn);
+
+                        if (payloadValue instanceof Map ||
+                                payloadValue instanceof List) {
+                            r.payload = mapper.writeValueAsString(payloadValue);
+                        } else {
+                            r.payload = String.valueOf(payloadValue);
+                        }
+
+                        r.payloadType = detectPayloadType(payloadValue);
+
+                    } else {
+
+                        r.payload = mapper.writeValueAsString(rowMap);
+                        r.payloadType = "JSON";
+                    }
+
+                    r.flat = rowMap;
+
+                    records.add(r);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new GraavlSystemException(
+                    "DB_QUERY_FAILURE",
+                    "Failed executing JDBC query",
+                    null,
+                    e
+            );
+        } catch (Exception e) {
+            throw new GraavlSystemException(
+                    "JDBC_READER_FAILURE",
+                    "Unexpected failure in JdbcDataKeyReader",
+                    null,
+                    e
+            );
+        }
+
+        iterator = records.iterator();
+    }
+
+    // ---------------- NORMALIZATION ----------------
+
+    private Object normalizeValue(String columnName, Object value) {
+
+        if (value == null) return null;
+
+        try {
+
+            // PostgreSQL JSONB
+            if (value instanceof PGobject pg) {
+
+                if ("json".equalsIgnoreCase(pg.getType()) ||
+                    "jsonb".equalsIgnoreCase(pg.getType())) {
+
+                    return parseJsonSafely(pg.getValue());
+                }
+
+                return pg.getValue();
+            }
+
+            // CLOB
+            if (value instanceof Clob clob) {
+                return clobToString(clob);
+            }
+
+            // String based detection
+            if (value instanceof String str) {
+
+                String trimmed = str.trim();
+
+                if (isJsonColumn(columnName) || looksLikeJson(trimmed)) {
+                    return parseJsonSafely(trimmed);
+                }
+
+                if (isXmlColumn(columnName) || looksLikeXml(trimmed)) {
+                    return trimmed;
+                }
+
+                return str;
+            }
+
+            return value;
+
+        } catch (Exception e) {
+            throw new GraavlSystemException(
+                    "COLUMN_NORMALIZATION_FAILURE",
+                    "Failed normalizing column: " + columnName,
+                    null,
+                    e
+            );
+        }
+    }
+
+    private boolean isJsonColumn(String column) {
+        return config.jsonColumns != null &&
+                config.jsonColumns.contains(column);
+    }
+
+    private boolean isXmlColumn(String column) {
+        return config.xmlColumns != null &&
+                config.xmlColumns.contains(column);
+    }
+
+    private boolean looksLikeJson(String s) {
+        return (s.startsWith("{") && s.endsWith("}")) ||
+               (s.startsWith("[") && s.endsWith("]"));
+    }
+
+    private boolean looksLikeXml(String s) {
+        return s.startsWith("<") && s.endsWith(">");
+    }
+
+    private Object parseJsonSafely(String json) {
+        try {
+            return mapper.readValue(json, Object.class);
+        } catch (Exception e) {
+            return json;
+        }
+    }
+
+    private String clobToString(Clob clob) throws Exception {
+        try (Reader reader = clob.getCharacterStream()) {
+            StringBuilder sb = new StringBuilder();
+            char[] buffer = new char[2048];
+            int len;
+            while ((len = reader.read(buffer)) != -1) {
+                sb.append(buffer, 0, len);
+            }
+            return sb.toString();
+        }
+    }
+
+    private String detectPayloadType(Object payloadValue) {
+        if (payloadValue instanceof Map || payloadValue instanceof List) {
+            return "JSON";
+        }
+        if (payloadValue instanceof String s && looksLikeXml(s)) {
+            return "XML";
+        }
+        return "JSON";
+    }
+
+    // ---------------- PARAMETERS ----------------
+
+    private void bindParameters(NamedParameterStatement nps) throws Exception {
+
+        if (config.sql.parameters == null) return;
+
+        for (Map.Entry<String, ParamConfig> entry :
+                config.sql.parameters.entrySet()) {
+
+            Object value = resolveValue(entry.getValue());
+            nps.setObject(entry.getKey(), value);
+        }
+    }
+
+    private Object resolveValue(ParamConfig pc) {
+
+        if (pc.source == null) return null;
+
+        return switch (pc.source.toLowerCase()) {
+            case "pipeline", "request" -> runtimeParams.get(pc.key);
+            case "static" -> pc.value;
+            case "system" -> System.getProperty(pc.key);
+            case "env" -> System.getenv(pc.key);
+            default -> null;
+        };
+    }
+
+    private long extractLong(Object v) {
+        if (v == null) return 0;
+        if (v instanceof Number n) return n.longValue();
+        return Long.parseLong(v.toString());
+    }
+
+    @Override
+    public Record<PipelineRecord> readRecord() {
+        if (iterator == null || !iterator.hasNext()) return null;
+        return new GenericRecord<>(null, iterator.next());
+    }
+
+    @Override
+    public void close() {}
+}

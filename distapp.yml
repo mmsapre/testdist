@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/source
+    username: postgres
+    password: postgres
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/audit
+    username: postgres
+    password: postgres
+
+app:
+  distribution:
+    serviceName: "dist-account-service"
+
+    reader:
+      # JDBC query used by J-Easy Batch reader
+      query: |
+        SELECT *
+        FROM ingestion_landing
+        WHERE data_key = :dataKey
+        ORDER BY row_id
+
+    audit:
+      enabled: true
+      table: distribution_audit
+      ensureTableOnStartup: true
+
+      startupReplay:
+        enabled: true
+        state: "PENDING_PUBLISH"
+        batchSize: 500
+
+      ringbuffer:
+        enabled: true
+        name: "rb.distribution.audit"
+        capacity: 200000
+
+    solace:
+      enabled: true
+      # stub: generates messages; replace with real Solace listener
+      startStubProducer: true

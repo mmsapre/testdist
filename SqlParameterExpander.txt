@@ -1,0 +1,40 @@
+package com.acme.graavl.sql;
+
+import java.util.*;
+
+public class SqlParameterExpander {
+
+    public static ExpandedQuery expand(String sql,
+                                       Map<String, List<Object>> params) {
+
+        Map<String,Object> flatParams = new LinkedHashMap<>();
+
+        for (var entry : params.entrySet()) {
+
+            String paramName = entry.getKey();
+            List<Object> values = entry.getValue();
+
+            if (values == null || values.isEmpty()) {
+                sql = sql.replace(":" + paramName, "(NULL)");
+                continue;
+            }
+
+            List<String> placeholders = new ArrayList<>();
+
+            for (int i = 0; i < values.size(); i++) {
+
+                String newName = paramName + "_" + i;
+                placeholders.add(":" + newName);
+                flatParams.put(newName, values.get(i));
+            }
+
+            String replacement = "(" + String.join(",", placeholders) + ")";
+            sql = sql.replace(":" + paramName, replacement);
+        }
+
+        return new ExpandedQuery(sql, flatParams);
+    }
+
+    public record ExpandedQuery(String sql,
+                                Map<String,Object> params) {}
+}

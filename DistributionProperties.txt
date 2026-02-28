@@ -1,0 +1,5 @@
+@Configuration
+@EnableConfigurationProperties
+@ConfigurationProperties(prefix = "distribution")
+public class DistributionProperties extends DistributionConfig {
+}

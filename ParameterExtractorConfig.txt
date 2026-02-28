@@ -1,0 +1,21 @@
+package com.acme.graavl.config;
+
+public class ParameterExtractorConfig {
+
+    /**
+     * Name of SQL parameter (e.g. accountNumber)
+     */
+    private String name;
+
+    /**
+     * JSONPATH | XPATH | FLAT
+     */
+    private String type;
+
+    /**
+     * $.account_number or /Account/accountNumber/text()
+     */
+    private String path;
+
+    // getters/setters
+}

@@ -1,0 +1,18 @@
+package com.acme.graavl.policy;
+
+import java.util.List;
+
+public class PolicyResult {
+
+    public long id;
+
+    /** 1 = highest priority */
+    public int priority;
+
+    /** FILTER | PASS | FULL_MASK | PARTIAL_MASK */
+    public String result;
+
+    /** Only for PARTIAL_MASK */
+    public List<String> maskJsonPaths;
+    public List<String> maskXPaths;
+}

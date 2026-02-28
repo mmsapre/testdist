@@ -1,0 +1,26 @@
+package com.acme.graavl.model;
+
+import java.time.Instant;
+
+public class DistributionAuditEvent {
+  public long loadRowId;
+  public String dataKey;
+  public String serviceName;
+  public DistributionState state;
+  public String publishMessage;
+  public String requestId;
+  public Instant timestamp;
+
+  public static DistributionAuditEvent of(long loadRowId, String dataKey, String serviceName,
+                                          DistributionState state, String msg, String requestId) {
+    var e = new DistributionAuditEvent();
+    e.loadRowId = loadRowId;
+    e.dataKey = dataKey;
+    e.serviceName = serviceName;
+    e.state = state;
+    e.publishMessage = msg;
+    e.requestId = requestId;
+    e.timestamp = Instant.now();
+    return e;
+  }
+}

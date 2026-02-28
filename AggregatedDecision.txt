@@ -1,0 +1,30 @@
+package com.acme.graavl.validation;
+
+import java.util.*;
+
+public class AggregatedDecision {
+
+    public ValidationOutcome outcome = ValidationOutcome.PASS;
+
+    public long policyId;
+    public int priority;
+
+    public List<String> maskJsonPaths = new ArrayList<>();
+    public List<String> maskXPaths = new ArrayList<>();
+
+    public void merge(PolicyResult p) {
+
+        ValidationOutcome incoming = ValidationOutcome.from(p.result);
+
+        if (incoming.rank > outcome.rank) {
+            outcome = incoming;
+            policyId = p.id;
+            priority = p.priority;
+        }
+
+        if (incoming == ValidationOutcome.PARTIAL_MASK) {
+            if (p.maskJsonPaths != null) maskJsonPaths.addAll(p.maskJsonPaths);
+            if (p.maskXPaths != null) maskXPaths.addAll(p.maskXPaths);
+        }
+    }
+}

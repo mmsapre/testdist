@@ -1,0 +1,11 @@
+package com.acme.graavl.config;
+
+import java.util.Map;
+
+public class ValidationConfig {
+    public boolean enabled = true;
+    public boolean bypass = false;
+    public String strategy = "PRIORITY_HIGHEST_WINS";
+
+    public Map<String, PolicyConfig> policies;
+}

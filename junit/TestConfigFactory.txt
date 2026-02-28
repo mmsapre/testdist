@@ -1,0 +1,41 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class TestConfigFactory {
+
+    public static DistributionConfig validConfig() {
+
+        DistributionConfig cfg = new DistributionConfig();
+        cfg.setServiceName("test-service");
+
+        ReaderConfig reader = new ReaderConfig();
+        reader.setType("jdbc");
+
+        JdbcReaderConfig jdbc = new JdbcReaderConfig();
+        jdbc.setDatasource("test");
+
+        SqlConfig sql = new SqlConfig();
+        sql.setQuery("select 1");
+
+        jdbc.setSql(sql);
+        reader.setJdbc(jdbc);
+        cfg.setReader(reader);
+
+        PolicyConfig policy = new PolicyConfig();
+        policy.setEnabled(true);
+        policy.setStrategy("PRIORITY_FIRST_MATCH");
+        policy.setMetadataQuery("select * from policy_metadata");
+        policy.setValueQuery("select * from policy_values");
+
+        cfg.setPolicy(policy);
+
+        TransformConfig transform = new TransformConfig();
+        transform.setEnabled(true);
+        transform.setSteps(List.of(new TransformStepConfig()));
+
+        cfg.setTransform(transform);
+
+        return cfg;
+    }
+}

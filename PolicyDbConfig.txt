@@ -1,0 +1,15 @@
+package com.acme.graavl.config;
+
+import java.util.Map;
+
+public class PolicyDbConfig {
+
+    private String datasource;
+
+    /**
+     * queryName -> SQL
+     */
+    private Map<String, String> queries;
+
+    // getters/setters
+}

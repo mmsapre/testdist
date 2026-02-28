@@ -1,0 +1,27 @@
+distribution:
+  reader:
+    type: jdbc
+    jdbc:
+      datasource: sourceDb
+
+      sql:
+        query: |
+          SELECT *
+          FROM ingestion_landing
+          WHERE data_key = :dataKey
+
+        parameters:
+          dataKey:
+            source: pipeline
+            key: dataKey
+
+      # 🔴 CRITICAL: row semantics
+      rowMode: AGGREGATE          # ROW | AGGREGATE | GROUP_BY_KEY
+      aggregateField: rows        # only for AGGREGATE
+
+      payloadColumn: payload      # optional optimization
+      jsonColumns:
+        - payload
+        - metadata
+      xmlColumns:
+        - xml_payload

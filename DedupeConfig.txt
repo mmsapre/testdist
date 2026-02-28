@@ -1,0 +1,23 @@
+package com.acme.graavl.config;
+
+public class DedupeConfig {
+
+    private boolean enabled;
+    private boolean bypassIfRequestIdPresent;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isBypassIfRequestIdPresent() {
+        return bypassIfRequestIdPresent;
+    }
+
+    public void setBypassIfRequestIdPresent(boolean bypassIfRequestIdPresent) {
+        this.bypassIfRequestIdPresent = bypassIfRequestIdPresent;
+    }
+}

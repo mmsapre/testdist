@@ -1,0 +1,75 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import org.h2.jdbcx.JdbcDataSource;
+import org.junit.jupiter.api.*;
+
+import java.sql.Connection;
+import java.sql.Statement;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class JdbcDataKeyReaderTest {
+
+    static JdbcDataSource ds;
+
+    @BeforeAll
+    static void setupDb() throws Exception {
+        ds = new JdbcDataSource();
+        ds.setURL("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1");
+
+        try (Connection c = ds.getConnection();
+             Statement st = c.createStatement()) {
+
+            st.execute("""
+              CREATE TABLE ingestion_landing (
+                row_id BIGINT,
+                data_key VARCHAR(50),
+                account_number VARCHAR(50),
+                region VARCHAR(10)
+              )
+            """);
+
+            st.execute("""
+              INSERT INTO ingestion_landing VALUES
+              (1, 'DK1', '123', 'EU'),
+              (2, 'DK1', '999', 'US')
+            """);
+        }
+    }
+
+    @Test
+    void readerShouldReadAndConvertRows() throws Exception {
+
+        JdbcReaderConfig cfg = new JdbcReaderConfig();
+        cfg.setDatasource("test");
+
+        SqlConfig sql = new SqlConfig();
+        sql.setQuery("SELECT * FROM ingestion_landing WHERE data_key = :dataKey");
+
+        ParamConfig pc = new ParamConfig();
+        pc.setSource("pipeline");
+        pc.setKey("dataKey");
+
+        sql.setParameters(Map.of("dataKey", pc));
+        cfg.setSql(sql);
+
+        Map<String,String> params = Map.of("dataKey", "DK1");
+
+        JdbcDataKeyReader reader =
+            new JdbcDataKeyReader(ds, cfg, params);
+
+        reader.open();
+
+        PipelineRecord r1 = reader.readRecord().getPayload();
+        PipelineRecord r2 = reader.readRecord().getPayload();
+
+        assertEquals("DK1", r1.dataKey);
+        assertNotNull(r1.payload);
+        assertEquals(2, r1.flat.size());
+
+        assertNull(reader.readRecord());
+    }
+}

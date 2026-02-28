@@ -1,0 +1,73 @@
+package com.acme.graavl.config;
+
+import java.util.Objects;
+
+public class DistributionConfig {
+
+    private String serviceName;
+
+    private ReaderConfig reader;
+    private PolicyConfig policy;
+    private TransformConfig transform;
+    private AuditConfig audit;
+    private PublisherConfig publisher;
+    private BypassConfig bypass;
+
+    // getters / setters
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public ReaderConfig getReader() {
+        return reader;
+    }
+
+    public void setReader(ReaderConfig reader) {
+        this.reader = reader;
+    }
+
+    public PolicyConfig getPolicy() {
+        return policy;
+    }
+
+    public void setPolicy(PolicyConfig policy) {
+        this.policy = policy;
+    }
+
+    public TransformConfig getTransform() {
+        return transform;
+    }
+
+    public void setTransform(TransformConfig transform) {
+        this.transform = transform;
+    }
+
+    public AuditConfig getAudit() {
+        return audit;
+    }
+
+    public void setAudit(AuditConfig audit) {
+        this.audit = audit;
+    }
+
+    public PublisherConfig getPublisher() {
+        return publisher;
+    }
+
+    public void setPublisher(PublisherConfig publisher) {
+        this.publisher = publisher;
+    }
+
+    public BypassConfig getBypass() {
+        return bypass;
+    }
+
+    public void setBypass(BypassConfig bypass) {
+        this.bypass = bypass;
+    }
+}

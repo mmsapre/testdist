@@ -1,0 +1,16 @@
+package com.acme.graavl.audit;
+
+import com.acme.graavl.model.DistributionAuditEvent;
+import com.hazelcast.ringbuffer.Ringbuffer;
+
+public class AuditRingBufferPublisher {
+  private final Ringbuffer<DistributionAuditEvent> rb;
+
+  public AuditRingBufferPublisher(Ringbuffer<DistributionAuditEvent> rb) {
+    this.rb = rb;
+  }
+
+  public void publish(DistributionAuditEvent e) {
+    rb.add(e);
+  }
+}

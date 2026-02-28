@@ -1,0 +1,14 @@
+package com.acme.graavl.config;
+
+public class ActionConfig {
+
+    private String auditState;
+
+    public String getAuditState() {
+        return auditState;
+    }
+
+    public void setAuditState(String auditState) {
+        this.auditState = auditState;
+    }
+}

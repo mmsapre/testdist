@@ -1,0 +1,3 @@
+package com.acme.graavl.model;
+
+public record PipelineTrigger(String dataKey, long loadRowId, String requestId, boolean republish) {}

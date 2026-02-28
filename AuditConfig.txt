@@ -1,0 +1,33 @@
+package com.acme.graavl.config;
+
+public class AuditConfig {
+
+    private boolean enabled;
+    private String table;
+
+    private StartupReplayConfig startupReplay;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public String getTable() {
+        return table;
+    }
+
+    public void setTable(String table) {
+        this.table = table;
+    }
+
+    public StartupReplayConfig getStartupReplay() {
+        return startupReplay;
+    }
+
+    public void setStartupReplay(StartupReplayConfig startupReplay) {
+        this.startupReplay = startupReplay;
+    }
+}

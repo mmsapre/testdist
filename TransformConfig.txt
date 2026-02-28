@@ -1,0 +1,26 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class TransformConfig {
+
+    private boolean enabled;
+
+    private List<TransformStepConfig> steps;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public List<TransformStepConfig> getSteps() {
+        return steps;
+    }
+
+    public void setSteps(List<TransformStepConfig> steps) {
+        this.steps = steps;
+    }
+}

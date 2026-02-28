@@ -1,0 +1,14 @@
+package com.acme.graavl.config;
+
+public class CacheConfig {
+
+    private boolean distributed;
+
+    private RaftConfig raft;
+
+    private long ttlSeconds = 600;
+
+    private long maximumSize = 10000;
+
+    // getters/setters
+}

@@ -1,0 +1,20 @@
+package com.acme.graavl.validation;
+
+import java.util.*;
+
+public class ExtractedContext {
+
+    private final Map<String, List<Object>> values = new LinkedHashMap<>();
+
+    public void put(String key, List<Object> v) {
+        values.put(key, v == null ? List.of() : v);
+    }
+
+    public List<Object> get(String key) {
+        return values.getOrDefault(key, List.of());
+    }
+
+    public Map<String,List<Object>> asMap() {
+        return Collections.unmodifiableMap(values);
+    }
+}

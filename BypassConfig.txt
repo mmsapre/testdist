@@ -1,0 +1,23 @@
+package com.acme.graavl.config;
+
+public class BypassConfig {
+
+    private boolean policy;
+    private boolean transform;
+
+    public boolean isPolicy() {
+        return policy;
+    }
+
+    public void setPolicy(boolean policy) {
+        this.policy = policy;
+    }
+
+    public boolean isTransform() {
+        return transform;
+    }
+
+    public void setTransform(boolean transform) {
+        this.transform = transform;
+    }
+}

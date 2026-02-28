@@ -1,0 +1,32 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+import java.util.Map;
+
+public class ValidationConfig {
+
+    private boolean enabled;
+
+    /**
+     * FIRST_MATCH | STRONGEST_ACTION | AGGREGATE
+     */
+    private String conflictStrategy;
+
+    private List<ValidationCriteriaConfig> criteria;
+
+    private PolicyDbConfig policyDb;
+
+    private Map<String, EnforcementMappingEntry> enforcementMapping;
+
+    private Map<String, ActionConfig> actions;
+
+    // helper for DEFAULT fallback
+    public EnforcementMappingEntry mappingFor(String ruleType) {
+        return enforcementMapping.getOrDefault(
+                ruleType,
+                enforcementMapping.get("DEFAULT")
+        );
+    }
+
+    // getters/setters
+}

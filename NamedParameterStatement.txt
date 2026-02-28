@@ -1,0 +1,52 @@
+package com.acme.graavl.core;
+
+import java.sql.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class NamedParameterStatement implements AutoCloseable {
+
+    private final PreparedStatement ps;
+    private final Map<String, List<Integer>> indexMap = new HashMap<>();
+
+    private static final Pattern PARAM_PATTERN =
+            Pattern.compile(":(\\w+)");
+
+    public NamedParameterStatement(Connection conn, String sql) throws SQLException {
+        String parsed = parse(sql);
+        this.ps = conn.prepareStatement(parsed);
+    }
+
+    private String parse(String sql) {
+        Matcher m = PARAM_PATTERN.matcher(sql);
+        StringBuffer sb = new StringBuffer();
+        int index = 1;
+
+        while (m.find()) {
+            String name = m.group(1);
+            indexMap.computeIfAbsent(name, k -> new ArrayList<>()).add(index++);
+            m.appendReplacement(sb, "?");
+        }
+
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public void setObject(String name, Object value) throws SQLException {
+        List<Integer> indexes = indexMap.get(name);
+        if (indexes == null) return;
+
+        for (Integer i : indexes) {
+            ps.setObject(i, value);
+        }
+    }
+
+    public ResultSet executeQuery() throws SQLException {
+        return ps.executeQuery();
+    }
+
+    @Override
+    public void close() throws SQLException {
+        ps.close();
+    }
+}

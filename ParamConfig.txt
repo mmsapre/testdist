@@ -1,0 +1,43 @@
+package com.acme.graavl.config;
+
+public class ParamConfig {
+
+    /**
+     * pipeline | request | static | system | env
+     */
+    private String source;
+
+    /**
+     * Used for pipeline / request / system / env
+     */
+    private String key;
+
+    /**
+     * Used only when source=static
+     */
+    private String value;
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
+}

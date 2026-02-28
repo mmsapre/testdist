@@ -1,0 +1,32 @@
+package com.acme.graavl.config;
+
+import com.acme.graavl.config.validation.DistributionConfigValidator;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class DistributionConfigValidatorTest {
+
+    @Test
+    void validConfig_shouldPass() {
+
+        DistributionConfig cfg = TestConfigFactory.validConfig();
+
+        assertDoesNotThrow(() ->
+            DistributionConfigValidator.validate(cfg)
+        );
+    }
+
+    @Test
+    void missingServiceName_shouldFail() {
+
+        DistributionConfig cfg = TestConfigFactory.validConfig();
+        cfg.setServiceName(null);
+
+        Exception ex = assertThrows(IllegalStateException.class, () ->
+            DistributionConfigValidator.validate(cfg)
+        );
+
+        assertTrue(ex.getMessage().contains("serviceName"));
+    }
+}

@@ -1,0 +1,27 @@
+package com.acme.graavl.exception;
+
+public class GraavlSystemException extends GraavlProcessingException {
+
+    public GraavlSystemException(String reason,
+                                 String message,
+                                 StepContext stepContext,
+                                 Throwable cause) {
+
+        super(reason,
+              message,
+              true,          // SYSTEM exceptions are retryable
+              stepContext,
+              cause);
+    }
+
+    public GraavlSystemException(String reason,
+                                 String message,
+                                 StepContext stepContext) {
+
+        super(reason,
+              message,
+              true,
+              stepContext,
+              null);
+    }
+}

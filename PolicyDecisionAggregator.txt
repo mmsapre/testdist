@@ -1,0 +1,25 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.policy.PolicyResult;
+
+import java.util.Comparator;
+import java.util.List;
+
+public class PolicyDecisionAggregator {
+
+    public AggregatedDecision resolve(List<PolicyResult> policies) {
+
+        if (policies == null || policies.isEmpty()) return null;
+
+        // Priority first (1 highest)
+        policies.sort(Comparator.comparingInt(p -> p.priority));
+
+        AggregatedDecision decision = new AggregatedDecision();
+
+        for (PolicyResult p : policies) {
+            decision.merge(p);
+        }
+
+        return decision;
+    }
+}

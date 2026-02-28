@@ -1,0 +1,46 @@
+package com.acme.graavl.config;
+
+public class PolicyConfig {
+
+    private boolean enabled;
+
+    /**
+     * PRIORITY_FIRST_MATCH | ALL_MATCHES
+     */
+    private String strategy;
+
+    private String metadataQuery;
+    private String valueQuery;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public String getStrategy() {
+        return strategy;
+    }
+
+    public void setStrategy(String strategy) {
+        this.strategy = strategy;
+    }
+
+    public String getMetadataQuery() {
+        return metadataQuery;
+    }
+
+    public void setMetadataQuery(String metadataQuery) {
+        this.metadataQuery = metadataQuery;
+    }
+
+    public String getValueQuery() {
+        return valueQuery;
+    }
+
+    public void setValueQuery(String valueQuery) {
+        this.valueQuery = valueQuery;
+    }
+}

@@ -1,0 +1,15 @@
+package com.acme.graavl.model;
+
+import java.util.Map;
+
+public class PipelineRecord {
+  public long rowId;
+  public String dataKey;
+  public String requestId;
+
+  public String payloadType = "JSON";
+  public String payload;                 // JSON string of the row
+  public Map<String, Object> flat;       // flat row map
+
+  public String decision = "DEFAULT";    // BLOCK|FILTER|PARTIAL_MASK|DEFAULT
+}

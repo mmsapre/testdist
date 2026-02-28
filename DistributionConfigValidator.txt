@@ -1,0 +1,104 @@
+package com.acme.graavl.config.validation;
+
+import com.acme.graavl.config.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class DistributionConfigValidator {
+
+    public static void validate(DistributionConfig cfg) {
+
+        List<String> errors = new ArrayList<>();
+
+        if (cfg == null) {
+            throw new IllegalArgumentException("Distribution config is null");
+        }
+
+        // service
+        if (isBlank(cfg.getServiceName())) {
+            errors.add("serviceName must be defined");
+        }
+
+        // reader
+        if (cfg.getReader() == null) {
+            errors.add("reader must be defined");
+        } else {
+            validateReader(cfg.getReader(), errors);
+        }
+
+        // policy
+        if (cfg.getPolicy() != null && cfg.getPolicy().isEnabled()) {
+            validatePolicy(cfg.getPolicy(), errors);
+        }
+
+        // transform
+        if (cfg.getTransform() != null && cfg.getTransform().isEnabled()) {
+            validateTransform(cfg.getTransform(), errors);
+        }
+
+        // audit
+        if (cfg.getAudit() != null && cfg.getAudit().isEnabled()) {
+            if (isBlank(cfg.getAudit().getTable())) {
+                errors.add("audit.table must be defined");
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            throw new IllegalStateException(
+                "Invalid DistributionConfig:\n - " + String.join("\n - ", errors)
+            );
+        }
+    }
+
+    private static void validateReader(ReaderConfig reader, List<String> errors) {
+
+        if (isBlank(reader.getType())) {
+            errors.add("reader.type must be defined");
+            return;
+        }
+
+        if ("jdbc".equalsIgnoreCase(reader.getType())) {
+
+            JdbcReaderConfig jdbc = reader.getJdbc();
+            if (jdbc == null) {
+                errors.add("reader.jdbc must be defined for jdbc reader");
+                return;
+            }
+
+            if (isBlank(jdbc.getDatasource())) {
+                errors.add("reader.jdbc.datasource must be defined");
+            }
+
+            if (jdbc.getSql() == null || isBlank(jdbc.getSql().getQuery())) {
+                errors.add("reader.jdbc.sql.query must be defined");
+            }
+        }
+    }
+
+    private static void validatePolicy(PolicyConfig policy, List<String> errors) {
+
+        if (isBlank(policy.getStrategy())) {
+            errors.add("policy.strategy must be defined");
+        }
+
+        if (isBlank(policy.getMetadataQuery())) {
+            errors.add("policy.metadataQuery must be defined");
+        }
+
+        if (isBlank(policy.getValueQuery())) {
+            errors.add("policy.valueQuery must be defined");
+        }
+    }
+
+    private static void validateTransform(TransformConfig transform, List<String> errors) {
+
+        if (transform.getSteps() == null || transform.getSteps().isEmpty()) {
+            errors.add("transform.steps must contain at least one step");
+        }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+}

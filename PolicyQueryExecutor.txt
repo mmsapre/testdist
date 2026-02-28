@@ -1,0 +1,81 @@
+package com.acme.graavl.policy;
+
+import com.acme.graavl.config.PolicyConfig;
+import com.acme.graavl.sql.SqlParameterExpander;
+import com.acme.graavl.core.NamedParameterStatement;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.*;
+
+public class PolicyQueryExecutor {
+
+    private final DataSource ds;
+
+    public PolicyQueryExecutor(DataSource ds) {
+        this.ds = ds;
+    }
+
+    public List<PolicyResult> executePolicyQuery(
+            PolicyConfig config,
+            Map<String, List<Object>> extractedValues) {
+
+        try {
+
+            // Build param map from mapping
+            Map<String, List<Object>> paramMap = new LinkedHashMap<>();
+
+            for (var entry : config.parameterMapping.entrySet()) {
+
+                String sqlParam = entry.getKey();
+                String extractorKey = entry.getValue();
+
+                paramMap.put(sqlParam,
+                        extractedValues.getOrDefault(extractorKey, List.of()));
+            }
+
+            // Expand IN clause
+            SqlParameterExpander.ExpandedQuery expanded =
+                    SqlParameterExpander.expand(config.query, paramMap);
+
+            try (Connection conn = ds.getConnection();
+                 NamedParameterStatement nps =
+                         new NamedParameterStatement(conn, expanded.sql())) {
+
+                for (var e : expanded.params().entrySet()) {
+                    nps.setObject(e.getKey(), e.getValue());
+                }
+
+                List<PolicyResult> results = new ArrayList<>();
+
+                try (ResultSet rs = nps.executeQuery()) {
+
+                    while (rs.next()) {
+
+                        PolicyResult r = new PolicyResult();
+                        r.id = rs.getLong("id");
+                        r.priority = rs.getInt("priority");
+                        r.action = rs.getString("action");
+
+                        r.maskJsonPaths = parseCsv(rs.getString("mask_json_paths"));
+                        r.maskXPaths = parseCsv(rs.getString("mask_x_paths"));
+
+                        results.add(r);
+                    }
+                }
+
+                return results;
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Policy query failed", e);
+        }
+    }
+
+    private List<String> parseCsv(String s) {
+        if (s == null || s.isBlank()) return List.of();
+        return Arrays.stream(s.split(","))
+                .map(String::trim)
+                .toList();
+    }
+}

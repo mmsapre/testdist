@@ -5,6 +5,11 @@ public class JdbcReaderConfig {
     private String datasource;
     private SqlConfig sql;
 
+
+    public String payloadColumn;         // optional
+    public List<String> jsonColumns;     // optional
+    public List<String> xmlColumns;      // optional
+}
     public String getDatasource() {
         return datasource;
     }

@@ -1,0 +1,68 @@
+private Object normalizeValue(Object value) {
+
+    if (value == null) {
+        return null;
+    }
+
+    // PostgreSQL JSONB
+    if (value instanceof org.postgresql.util.PGobject pg) {
+
+        if ("json".equalsIgnoreCase(pg.getType()) ||
+            "jsonb".equalsIgnoreCase(pg.getType())) {
+
+            return parseJsonSafely(pg.getValue());
+        }
+
+        return pg.getValue();
+    }
+
+    // CLOB (XML / large text)
+    if (value instanceof Clob clob) {
+        return clobToString(clob);
+    }
+
+    // If String looks like JSON
+    if (value instanceof String str) {
+
+        String trimmed = str.trim();
+
+        if (looksLikeJson(trimmed)) {
+            return parseJsonSafely(trimmed);
+        }
+
+        if (looksLikeXml(trimmed)) {
+            return trimmed;  // keep XML as raw string
+        }
+
+        return str;
+    }
+
+    return value;
+}
+private String clobToString(Clob clob) {
+    try (Reader reader = clob.getCharacterStream()) {
+        StringBuilder sb = new StringBuilder();
+        char[] buffer = new char[2048];
+        int len;
+        while ((len = reader.read(buffer)) != -1) {
+            sb.append(buffer, 0, len);
+        }
+        return sb.toString();
+    } catch (Exception e) {
+        throw new RuntimeException("Failed reading CLOB", e);
+    }
+}
+private Object parseJsonSafely(String json) {
+    try {
+        return mapper.readValue(json, Object.class);
+    } catch (Exception e) {
+        return json; // fallback to raw string
+    }
+}
+private boolean looksLikeXml(String s) {
+    return s.startsWith("<") && s.endsWith(">");
+}
+private boolean looksLikeJson(String s) {
+    return (s.startsWith("{") && s.endsWith("}")) ||
+           (s.startsWith("[") && s.endsWith("]"));
+}

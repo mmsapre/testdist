@@ -1,0 +1,25 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class EnforcementMappingEntry {
+
+    /**
+     * VALID | BLOCK | FILTER | FULL_MASK | PARTIAL_MASK
+     */
+    private String action;
+
+    private boolean stopPipeline;
+
+    private MaskFields maskFields;
+
+    public static class MaskFields {
+
+        private List<String> jsonpath;
+        private List<String> xpath;
+
+        // getters/setters
+    }
+
+    // getters/setters
+}

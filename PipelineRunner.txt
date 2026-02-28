@@ -1,0 +1,36 @@
+package com.acme.graavl.distribution;
+
+import com.acme.graavl.config.AppConfig.AppProps;
+import com.acme.graavl.model.PipelineTrigger;
+import com.acme.graavl.pipeline.JobFactory;
+import org.jeasy.batch.core.job.Job;
+import org.jeasy.batch.core.job.JobExecutor;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
+@Component
+public class PipelineRunner {
+
+  private final AppProps props;
+  private final JobFactory jobFactory;
+
+  public PipelineRunner(AppProps props, JobFactory jobFactory) {
+    this.props = props;
+    this.jobFactory = jobFactory;
+  }
+
+  public Mono<Void> runFromSolace(String dataKey, long loadRowId, String requestId) {
+    return run(new PipelineTrigger(dataKey, loadRowId, requestId, false));
+  }
+
+  public Mono<Void> republish(String dataKey, long loadRowId, String requestId) {
+    return run(new PipelineTrigger(dataKey, loadRowId, requestId, true));
+  }
+
+  private Mono<Void> run(PipelineTrigger trigger) {
+    return Mono.fromRunnable(() -> {
+      Job job = jobFactory.buildJob(trigger);
+      new JobExecutor().execute(job);
+    });
+  }
+}

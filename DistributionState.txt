@@ -1,0 +1,17 @@
+package com.acme.graavl.model;
+
+public enum DistributionState {
+  RECEIVED,
+  READ_DB,
+  VALIDATED,
+  FILTERED,
+  BLOCKED,
+  PARTIAL_MASK,
+  MASKED,
+  TRANSFORMED,
+  PENDING_PUBLISH,
+  PUBLISHED,
+  REPUBLISH,
+  DUPLICATE,
+  FAILED
+}

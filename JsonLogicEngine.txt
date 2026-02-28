@@ -1,0 +1,42 @@
+package com.acme.graavl.policy;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Map;
+
+/**
+ * Thin wrapper – replace with any JSON-Logic lib if desired
+ */
+public class JsonLogicEngine {
+
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    public static boolean evaluate(String ruleJson, Map<String, Object> data) {
+
+        try {
+            JsonNode rule = mapper.readTree(ruleJson);
+            JsonNode input = mapper.valueToTree(data);
+
+            // very simple evaluator for == and !=
+            if (rule.has("==")) {
+                var arr = rule.get("==");
+                return input.at("/" + arr.get(0).get("var").asText())
+                        .asText()
+                        .equals(arr.get(1).asText());
+            }
+
+            if (rule.has("!=")) {
+                var arr = rule.get("!=");
+                return !input.at("/" + arr.get(0).get("var").asText())
+                        .asText()
+                        .equals(arr.get(1).asText());
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid JSON-Logic rule", e);
+        }
+    }
+}

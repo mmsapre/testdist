@@ -1,0 +1,15 @@
+package com.acme.graavl.config;
+
+public class DistributionConfig {
+
+    private String serviceName;
+
+    private ValidationConfig validation;
+    private CacheConfig cache;
+    private MetricsConfig metrics;
+    private AuditConfig audit;
+    private PublisherConfig publisher;
+    private BypassConfig bypass;
+
+    // getters/setters
+}

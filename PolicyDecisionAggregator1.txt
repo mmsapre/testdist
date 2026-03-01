@@ -1,0 +1,30 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.policy.PolicyResult;
+
+import java.util.Comparator;
+import java.util.List;
+
+public class PolicyDecisionAggregator {
+
+    public PolicyResult resolve(List<PolicyResult> allMatched) {
+        if (allMatched == null || allMatched.isEmpty()) return null;
+
+        return allMatched.stream()
+                .min(Comparator
+                        .comparingInt((PolicyResult p) -> p.priority)
+                        .thenComparingInt(p -> resultRank(p.result)))
+                .orElse(null);
+    }
+
+    private int resultRank(String r) {
+        if (r == null) return 100;
+        return switch (r.toUpperCase()) {
+            case "FILTER" -> 1;
+            case "FULL_MASK" -> 2;
+            case "PARTIAL_MASK" -> 3;
+            case "PASS" -> 4;
+            default -> 50;
+        };
+    }
+}

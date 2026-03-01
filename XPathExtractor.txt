@@ -1,0 +1,43 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.config.ExtractorConfig;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.*;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+public class XPathExtractor {
+
+    public List<Object> extract(String xmlPayload, ExtractorConfig cfg) throws Exception {
+        if (cfg == null || cfg.paths == null) return List.of();
+
+        Document doc = DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xmlPayload.getBytes(StandardCharsets.UTF_8)));
+
+        XPath xpath = XPathFactory.newInstance().newXPath();
+
+        List<Object> out = new ArrayList<>();
+        for (String p : cfg.paths) {
+            if (p == null || p.isBlank()) continue;
+
+            XPathExpression expr = xpath.compile(p);
+            Object result = expr.evaluate(doc, XPathConstants.NODESET);
+
+            if (result instanceof NodeList nl) {
+                for (int i = 0; i < nl.getLength(); i++) {
+                    String v = nl.item(i).getTextContent();
+                    if (v != null && !v.isBlank()) out.add(v);
+                }
+            } else {
+                String v = expr.evaluate(doc);
+                if (v != null && !v.isBlank()) out.add(v);
+            }
+        }
+        return out;
+    }
+}

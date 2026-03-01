@@ -1,0 +1,92 @@
+package com.acme.graavl.policy;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Result of evaluating one policy rule.
+ * Returned from policy DB queries and aggregated later.
+ */
+public class PolicyResult {
+
+    private long policyId;
+    private String policyKey;
+    private int priority; // 1 = highest
+    private PolicyAction action; // PASS / FILTER / FULL_MASK / PARTIAL_MASK
+
+    /** JSON-Logic rule (optional, evaluated later) */
+    private String jsonLogic;
+
+    /** For PARTIAL_MASK */
+    private List<String> maskIncludePaths = new ArrayList<>();
+    private List<String> maskExcludePaths = new ArrayList<>();
+
+    /** For FULL_MASK */
+    private List<String> fullMaskExcludePaths = new ArrayList<>();
+
+    // ---------------- Getters / Setters ----------------
+
+    public long getPolicyId() {
+        return policyId;
+    }
+
+    public void setPolicyId(long policyId) {
+        this.policyId = policyId;
+    }
+
+    public String getPolicyKey() {
+        return policyKey;
+    }
+
+    public void setPolicyKey(String policyKey) {
+        this.policyKey = policyKey;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public PolicyAction getAction() {
+        return action;
+    }
+
+    public void setAction(PolicyAction action) {
+        this.action = action;
+    }
+
+    public String getJsonLogic() {
+        return jsonLogic;
+    }
+
+    public void setJsonLogic(String jsonLogic) {
+        this.jsonLogic = jsonLogic;
+    }
+
+    public List<String> getMaskIncludePaths() {
+        return maskIncludePaths;
+    }
+
+    public void setMaskIncludePaths(List<String> maskIncludePaths) {
+        this.maskIncludePaths = maskIncludePaths;
+    }
+
+    public List<String> getMaskExcludePaths() {
+        return maskExcludePaths;
+    }
+
+    public void setMaskExcludePaths(List<String> maskExcludePaths) {
+        this.maskExcludePaths = maskExcludePaths;
+    }
+
+    public List<String> getFullMaskExcludePaths() {
+        return fullMaskExcludePaths;
+    }
+
+    public void setFullMaskExcludePaths(List<String> fullMaskExcludePaths) {
+        this.fullMaskExcludePaths = fullMaskExcludePaths;
+    }
+}

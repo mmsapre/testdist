@@ -1,0 +1,31 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+import java.util.Map;
+
+public class PolicyConfig {
+
+    public Map<String, ExtractorConfig> extractor;
+    public String query;
+    public Map<String, String> parameterMapping;
+
+    // PARTIAL: include + exclude
+    public PartialMaskConfig partialMask;
+
+    // FULL: exclude only
+    public FullMaskConfig fullMask;
+
+    public static class PartialMaskConfig {
+        public PathList include;
+        public PathList exclude;
+    }
+
+    public static class FullMaskConfig {
+        public PathList exclude;
+    }
+
+    public static class PathList {
+        public List<String> jsonPaths;
+        public List<String> xPaths;
+    }
+}

@@ -1,0 +1,21 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.config.ExtractorConfig;
+import com.jayway.jsonpath.JsonPath;
+
+import java.util.*;
+
+public class JsonPathExtractor {
+
+    public List<Object> extract(String payload, ExtractorConfig cfg) {
+
+        List<Object> out = new ArrayList<>();
+
+        for (String p : cfg.paths) {
+            Object result = JsonPath.read(payload, p);
+            if (result instanceof List<?> l) out.addAll(l);
+            else if (result != null) out.add(result);
+        }
+        return out;
+    }
+}

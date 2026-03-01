@@ -1,0 +1,69 @@
+package com.acme.graavl;
+
+import com.acme.graavl.policy.*;
+import org.h2.jdbcx.JdbcDataSource;
+import org.junit.jupiter.api.*;
+
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class PolicyQueryExecutorH2Test {
+
+    private NamedParameterJdbcTemplate jdbc;
+    private PolicyQueryExecutor exec;
+
+    @BeforeEach
+    void setup() {
+        JdbcDataSource ds = new JdbcDataSource();
+        ds.setURL("jdbc:h2:mem:test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
+        ds.setUser("sa");
+        ds.setPassword("");
+
+        jdbc = new NamedParameterJdbcTemplate(ds);
+        exec = new PolicyQueryExecutor(jdbc);
+
+        jdbc.getJdbcTemplate().execute("""
+            create table policy_view (
+              policy_id bigint,
+              policy_key varchar(100),
+              priority int,
+              result varchar(30),
+              json_logic varchar(2000),
+              mask_include varchar(2000),
+              mask_exclude varchar(2000),
+              full_exclude varchar(2000),
+              account_no varchar(100)
+            )
+        """);
+
+        jdbc.getJdbcTemplate().execute("""
+            insert into policy_view(policy_id, policy_key, priority, result, mask_include, mask_exclude, account_no)
+            values (1, 'ACC_BLOCK', 1, 'FILTER', null, null, '999')
+        """);
+
+        jdbc.getJdbcTemplate().execute("""
+            insert into policy_view(policy_id, policy_key, priority, result, mask_include, mask_exclude, account_no)
+            values (2, 'ACC_MASK', 5, 'PARTIAL_MASK', '$.a,$.b', '$.header.requestId', '111')
+        """);
+    }
+
+    @Test
+    void returnsRowsForInClause() {
+        String sql = """
+            select policy_id, policy_key, priority, result, mask_include, mask_exclude, full_exclude, json_logic
+            from policy_view
+            where account_no in (:accounts)
+        """;
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("accounts", List.of("999", "111"));
+
+        List<PolicyResult> out = exec.execute(sql, params);
+        assertEquals(2, out.size());
+        assertTrue(out.stream().anyMatch(r -> r.getAction() == PolicyAction.FILTER));
+        assertTrue(out.stream().anyMatch(r -> r.getAction() == PolicyAction.PARTIAL_MASK));
+    }
+}

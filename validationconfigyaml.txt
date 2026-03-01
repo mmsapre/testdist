@@ -1,0 +1,30 @@
+distribution:
+  validation:
+    enabled: true
+    bypass: false
+    strategy: PRIORITY_HIGHEST_WINS
+
+    policies:
+
+      ACCOUNT_POLICY:
+
+        extractor:
+          ACCOUNT_NO:
+            type: JSON_PATH
+            paths:
+              - $.rows[*].accountNumber
+
+          CLIENT_ID:
+            type: JSON_PATH
+            paths:
+              - $.rows[*].clientId
+
+        query: |
+          SELECT id, priority, action, mask_json_paths, mask_x_paths
+          FROM policy_table
+          WHERE account_no IN (:accountNos)
+          AND client_id IN (:clientIds)
+
+        parameterMapping:
+          accountNos: ACCOUNT_NO
+          clientIds: CLIENT_ID

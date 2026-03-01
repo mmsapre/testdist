@@ -1,0 +1,32 @@
+package com.acme.graavl.raft;
+
+import io.microraft.*;
+import io.microraft.impl.local.LocalRaftEndpoint;
+import io.microraft.persistence.NopRaftStore;
+import io.microraft.transport.Transport;
+
+import java.util.List;
+
+public class RaftNodeFactory {
+
+    public static RaftNode createNode(String id,
+                                      List<RaftEndpoint> members,
+                                      ReplicatedCacheStateMachine sm) {
+
+        RaftEndpoint endpoint = LocalRaftEndpoint.newEndpoint(id);
+        Transport transport = new InMemoryTransport(endpoint);
+
+        RaftNode node = RaftNode.newBuilder()
+                .setGroupId("graavl-cache")
+                .setLocalEndpoint(endpoint)
+                .setInitialGroupMembers(members)
+                .setTransport(transport)
+                .setStateMachine(sm)
+                .setRaftStore(new NopRaftStore())
+                .build();
+
+        ((InMemoryTransport) transport).bind(node);
+
+        return node;
+    }
+}

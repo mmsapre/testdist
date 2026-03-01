@@ -1,0 +1,120 @@
+package com.acme.graavl.config;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Root validation configuration.
+ *
+ * Strategy:
+ *  - All configured policies may be evaluated
+ *  - Final decision is chosen by HIGHEST PRIORITY (1 is highest)
+ *  - If same priority, action strength applies:
+ *      FILTER > FULL_MASK > PARTIAL_MASK > PASS
+ */
+public class ValidationConfig {
+
+    /**
+     * Enable / disable validation globally.
+     */
+    private boolean enabled = true;
+
+    /**
+     * If true → validation is bypassed entirely.
+     */
+    private boolean bypass = false;
+
+    /**
+     * Service name used in policy lookup / audit.
+     */
+    private String serviceName;
+
+    /**
+     * Domain used for policy lookup.
+     */
+    private String domain;
+
+    /**
+     * Strategy for resolving multiple matching policies.
+     * Default: HIGHEST_PRIORITY_WINS
+     */
+    private Strategy strategy = Strategy.HIGHEST_PRIORITY_WINS;
+
+    /**
+     * Map<policyKey, PolicyConfig>
+     */
+    private Map<String, PolicyConfig> policies = new LinkedHashMap<>();
+
+    // -------------------------
+    // Getters / Setters
+    // -------------------------
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isBypass() {
+        return bypass;
+    }
+
+    public void setBypass(boolean bypass) {
+        this.bypass = bypass;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
+    public Strategy getStrategy() {
+        return strategy;
+    }
+
+    public void setStrategy(Strategy strategy) {
+        this.strategy = strategy;
+    }
+
+    public Map<String, PolicyConfig> getPolicies() {
+        return policies;
+    }
+
+    public void setPolicies(Map<String, PolicyConfig> policies) {
+        this.policies = policies;
+    }
+
+    // -------------------------
+    // Helper
+    // -------------------------
+
+    public boolean hasPolicies() {
+        return policies != null && !policies.isEmpty();
+    }
+
+    // -------------------------
+    // Strategy Enum
+    // -------------------------
+
+    public enum Strategy {
+
+        /**
+         * Lowest numeric priority wins (1 = highest).
+         * If same priority, action strength applies.
+         */
+        HIGHEST_PRIORITY_WINS
+    }
+}

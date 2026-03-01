@@ -1,0 +1,75 @@
+distribution:
+  validation:
+    enabled: true
+    bypass: false
+    strategy: PRIORITY_HIGHEST_WINS
+
+    policies:
+
+      BLOCK_ACCOUNT:
+        extractor:
+          ACCOUNT_NO:
+            type: JSON_PATH
+            paths: [ "$.rows[*].accountNumber" ]
+
+        query: |
+          SELECT
+            pm.policy_id,
+            pm.policy_key,
+            pm.priority,
+            'FILTER' as result
+          FROM policy_metadata pm
+          JOIN policy_criteria pc ON pm.policy_id = pc.policy_id
+          JOIN policy_criteria_value pv ON pc.criteria_id = pv.criteria_id
+          WHERE pm.enabled = true
+            AND pc.criteria_key = 'ACCOUNT_NO'
+            AND pv.value IN (:accounts)
+
+        parameterMapping:
+          accounts: ACCOUNT_NO
+
+
+      EXPLICIT_PASS:
+        extractor:
+          REGION:
+            type: JSON_PATH
+            paths: [ "$.rows[*].region" ]
+
+        query: |
+          SELECT
+            pm.policy_id,
+            pm.policy_key,
+            pm.priority,
+            'PASS' as result
+          FROM policy_metadata pm
+          JOIN policy_criteria pc ON pm.policy_id = pc.policy_id
+          JOIN policy_criteria_value pv ON pc.criteria_id = pv.criteria_id
+          WHERE pm.enabled = true
+            AND pc.criteria_key = 'REGION'
+            AND pv.value IN (:regions)
+
+        parameterMapping:
+          regions: REGION
+
+
+      GDPR_MASK:
+        extractor:
+          REGION:
+            type: JSON_PATH
+            paths: [ "$.rows[*].region" ]
+
+        query: |
+          SELECT
+            pm.policy_id,
+            pm.policy_key,
+            pm.priority,
+            'PARTIAL_MASK' as result,
+            string_agg(mask_path, ',') as mask_json_include
+          FROM policy_metadata pm
+          JOIN policy_mask_path mp ON pm.policy_id = mp.policy_id
+          WHERE pm.enabled = true
+            AND mp.mask_mode = 'INCLUDE'
+            AND mp.mask_type = 'JSON'
+            AND pm.domain = 'GDPR'
+            AND pm.region IN (:regions)
+          GROUP BY pm.policy_id, pm.policy_key, pm.priority

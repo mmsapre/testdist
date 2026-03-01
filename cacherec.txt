@@ -1,0 +1,6 @@
+package com.acme.graavl.raft;
+
+import java.io.Serializable;
+
+public record PutCommand(String key, byte[] value) implements Serializable {}
+public record RemoveCommand(String key) implements Serializable {}

@@ -1,0 +1,7 @@
+package com.acme.graavl.logic;
+
+import java.util.Map;
+
+public interface JsonLogicEvaluator {
+    boolean evaluate(String jsonLogic, Map<String, Object> data);
+}

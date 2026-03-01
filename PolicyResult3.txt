@@ -1,0 +1,74 @@
+package com.acme.graavl.policy;
+
+import java.util.List;
+
+public class PolicyResult {
+
+    private long id;
+    private String policyKey;
+    private int priority;
+    private String result;
+
+    private List<String> partialJsonInclude;
+    private List<String> partialJsonExclude;
+
+    private List<String> fullJsonExclude;
+
+    public PolicyResult() {}
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getPolicyKey() {
+        return policyKey;
+    }
+
+    public void setPolicyKey(String policyKey) {
+        this.policyKey = policyKey;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public String getResult() {
+        return result;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
+    }
+
+    public List<String> getPartialJsonInclude() {
+        return partialJsonInclude;
+    }
+
+    public void setPartialJsonInclude(List<String> partialJsonInclude) {
+        this.partialJsonInclude = partialJsonInclude;
+    }
+
+    public List<String> getPartialJsonExclude() {
+        return partialJsonExclude;
+    }
+
+    public void setPartialJsonExclude(List<String> partialJsonExclude) {
+        this.partialJsonExclude = partialJsonExclude;
+    }
+
+    public List<String> getFullJsonExclude() {
+        return fullJsonExclude;
+    }
+
+    public void setFullJsonExclude(List<String> fullJsonExclude) {
+        this.fullJsonExclude = fullJsonExclude;
+    }
+}

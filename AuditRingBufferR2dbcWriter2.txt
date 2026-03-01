@@ -1,0 +1,68 @@
+package com.acme.graavl.audit;
+
+import com.acme.graavl.model.DistributionAuditEvent;
+import com.hazelcast.ringbuffer.ReadResultSet;
+import com.hazelcast.ringbuffer.Ringbuffer;
+import org.springframework.r2dbc.core.DatabaseClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class AuditRingBufferR2dbcWriter {
+
+  private final Ringbuffer<DistributionAuditEvent> rb;
+  private final DatabaseClient db;
+  private final String table;
+  private final AtomicLong seq = new AtomicLong();
+
+  public AuditRingBufferR2dbcWriter(Ringbuffer<DistributionAuditEvent> rb, DatabaseClient db, String table) {
+    this.rb = rb;
+    this.db = db;
+    this.table = table;
+  }
+
+  public Mono<Void> start() {
+    return Mono.fromRunnable(() -> seq.set(rb.tailSequence() + 1))
+        .thenMany(Flux.interval(Duration.ofMillis(200)).concatMap(t -> drainOnce(2000)))
+        .then();
+  }
+
+  private Mono<Void> drainOnce(int maxCount) {
+    long start = seq.get();
+    long available = rb.tailSequence() - start + 1;
+    if (available <= 0) return Mono.empty();
+
+    int toRead = (int) Math.min(maxCount, available);
+
+    ReadResultSet<DistributionAuditEvent> rs;
+    try {
+      rs = rb.readMany(start, 1, toRead);
+    } catch (Exception e) {
+      return Mono.error(e);
+    }
+
+    return Flux.fromIterable(rs)
+        .concatMap(this::insertOne)
+        .then(Mono.fromRunnable(() -> seq.set(start + rs.size())));
+  }
+
+  private Mono<Void> insertOne(DistributionAuditEvent e) {
+    String sql = """
+      INSERT INTO %s(load_row_id, data_key, service_name, state, publish_message, request_id, created_at)
+      VALUES(:loadRowId, :dataKey, :serviceName, :state, :msg, :requestId, now())
+      """.formatted(table);
+
+    return db.sql(sql)
+        .bind("loadRowId", e.loadRowId)
+        .bind("dataKey", e.dataKey)
+        .bind("serviceName", e.serviceName)
+        .bind("state", e.state.name())
+        .bind("msg", e.publishMessage)
+        .bind("requestId", e.requestId)
+        .fetch()
+        .rowsUpdated()
+        .then();
+  }
+}

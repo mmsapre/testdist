@@ -1,0 +1,120 @@
+package com.acme.graavl.config;
+
+import java.util.Map;
+
+public class PolicyConfig {
+
+    private Map<String, ExtractorConfig> extractor;
+    private String query;
+    private Map<String, String> parameterMapping;
+
+    private PartialMaskConfig partialMask;
+    private FullMaskConfig fullMask;
+
+    public PolicyConfig() {}
+
+    public Map<String, ExtractorConfig> getExtractor() {
+        return extractor;
+    }
+
+    public void setExtractor(Map<String, ExtractorConfig> extractor) {
+        this.extractor = extractor;
+    }
+
+    public String getQuery() {
+        return query;
+    }
+
+    public void setQuery(String query) {
+        this.query = query;
+    }
+
+    public Map<String, String> getParameterMapping() {
+        return parameterMapping;
+    }
+
+    public void setParameterMapping(Map<String, String> parameterMapping) {
+        this.parameterMapping = parameterMapping;
+    }
+
+    public PartialMaskConfig getPartialMask() {
+        return partialMask;
+    }
+
+    public void setPartialMask(PartialMaskConfig partialMask) {
+        this.partialMask = partialMask;
+    }
+
+    public FullMaskConfig getFullMask() {
+        return fullMask;
+    }
+
+    public void setFullMask(FullMaskConfig fullMask) {
+        this.fullMask = fullMask;
+    }
+
+    // ---------------- INNER CLASSES ----------------
+
+    public static class PartialMaskConfig {
+
+        private PathList include;
+        private PathList exclude;
+
+        public PartialMaskConfig() {}
+
+        public PathList getInclude() {
+            return include;
+        }
+
+        public void setInclude(PathList include) {
+            this.include = include;
+        }
+
+        public PathList getExclude() {
+            return exclude;
+        }
+
+        public void setExclude(PathList exclude) {
+            this.exclude = exclude;
+        }
+    }
+
+    public static class FullMaskConfig {
+
+        private PathList exclude;
+
+        public FullMaskConfig() {}
+
+        public PathList getExclude() {
+            return exclude;
+        }
+
+        public void setExclude(PathList exclude) {
+            this.exclude = exclude;
+        }
+    }
+
+    public static class PathList {
+
+        private java.util.List<String> jsonPaths;
+        private java.util.List<String> xPaths;
+
+        public PathList() {}
+
+        public java.util.List<String> getJsonPaths() {
+            return jsonPaths;
+        }
+
+        public void setJsonPaths(java.util.List<String> jsonPaths) {
+            this.jsonPaths = jsonPaths;
+        }
+
+        public java.util.List<String> getXPaths() {
+            return xPaths;
+        }
+
+        public void setXPaths(java.util.List<String> xPaths) {
+            this.xPaths = xPaths;
+        }
+    }
+}

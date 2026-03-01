@@ -1,0 +1,163 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.exception.GraavlBusinessException;
+import com.acme.graavl.exception.GraavlSystemException;
+import com.acme.graavl.exception.StepContext;
+import com.acme.graavl.mask.GraavlMaskEngine;
+import com.acme.graavl.mask.MaskOptions;
+import com.acme.graavl.policy.PolicyQueryExecutor;
+import com.acme.graavl.policy.PolicyResult;
+import com.acme.graavl.validation.ExtractedContext;
+import com.acme.graavl.validation.JsonPathExtractor;
+import com.acme.graavl.validation.PolicyDecisionAggregator;
+import com.acme.graavl.validation.XPathExtractor;
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.*;
+
+public class GraavlPolicyValidationProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final ValidationConfig cfg;
+    private final PolicyQueryExecutor executor;
+    private final GraavlMaskEngine maskEngine;
+    private final PolicyDecisionAggregator aggregator = new PolicyDecisionAggregator();
+
+    private final JsonPathExtractor jsonExtractor = new JsonPathExtractor();
+    private final XPathExtractor xmlExtractor = new XPathExtractor();
+
+    public GraavlPolicyValidationProcessor(ValidationConfig cfg,
+                                          PolicyQueryExecutor executor,
+                                          GraavlMaskEngine maskEngine) {
+        this.cfg = cfg;
+        this.executor = executor;
+        this.maskEngine = maskEngine;
+    }
+
+    @Override
+    public PipelineRecord processRecord(Record<PipelineRecord> rec) {
+
+        PipelineRecord r = rec.getPayload();
+        if (!cfg.enabled || cfg.bypass) return r;
+
+        StepContext stepCtx = new StepContext(
+                "GraavlPolicyValidationProcessor", "VALIDATION", r.dataKey, r.rowId);
+
+        try {
+            List<PolicyResult> matched = new ArrayList<>();
+
+            for (PolicyConfig pc : cfg.policies.values()) {
+                ExtractedContext extracted = extract(pc, r);
+
+                // Execute per policy (query may return multiple rows)
+                matched.addAll(executor.execute(pc, extracted.asMap()));
+            }
+
+            PolicyResult decision = aggregator.resolve(matched);
+            if (decision == null) return r;
+
+            // find config for the chosen policy (needed for YAML overrides)
+            PolicyConfig chosenCfg = findChosenConfig(decision);
+
+            applyDecision(decision, chosenCfg, r, stepCtx);
+            return r;
+
+        } catch (GraavlBusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new GraavlSystemException("POLICY_VALIDATION_FAILURE",
+                    "Policy validation failed", stepCtx, e);
+        }
+    }
+
+    private ExtractedContext extract(PolicyConfig pc, PipelineRecord r) throws Exception {
+        ExtractedContext out = new ExtractedContext();
+        if (pc.extractor == null) return out;
+
+        for (var e : pc.extractor.entrySet()) {
+            ExtractorConfig ec = e.getValue();
+            List<Object> vals = switch (ec.type.toUpperCase()) {
+                case "JSON_PATH" -> jsonExtractor.extract(r.payload, ec);
+                case "XPATH" -> xmlExtractor.extract(r.payload, ec);
+                default -> List.of();
+            };
+            out.put(e.getKey(), vals);
+        }
+        return out;
+    }
+
+    private PolicyConfig findChosenConfig(PolicyResult decision) {
+        // If you want: add a "policyName" column in query and store it in PolicyResult
+        // For now, return null (only DB paths apply) OR pick a default.
+        return null;
+    }
+
+    private void applyDecision(PolicyResult p,
+                               PolicyConfig cfgOrNull,
+                               PipelineRecord r,
+                               StepContext ctx) throws Exception {
+
+        switch (p.result.toUpperCase()) {
+
+            case "FILTER" ->
+                    throw new GraavlBusinessException(
+                            "POLICY_FILTER",
+                            "Filtered by policy id=" + p.id + " priority=" + p.priority,
+                            ctx
+                    );
+
+            case "PASS" -> { return; }
+
+            case "FULL_MASK" -> {
+                MaskOptions o = new MaskOptions();
+                o.mode = MaskOptions.Mode.FULL;
+
+                // FULL = exclude only (DB + YAML merged)
+                o.jsonExclude = merge(p.fullJsonExclude,
+                        cfgOrNull != null && cfgOrNull.fullMask != null && cfgOrNull.fullMask.exclude != null
+                                ? cfgOrNull.fullMask.exclude.jsonPaths : null);
+
+                o.xmlExclude = merge(p.fullXmlExclude,
+                        cfgOrNull != null && cfgOrNull.fullMask != null && cfgOrNull.fullMask.exclude != null
+                                ? cfgOrNull.fullMask.exclude.xPaths : null);
+
+                maskEngine.apply(r, o);
+            }
+
+            case "PARTIAL_MASK" -> {
+                MaskOptions o = new MaskOptions();
+                o.mode = MaskOptions.Mode.PARTIAL;
+
+                // include mask paths (DB + YAML)
+                o.jsonInclude = merge(p.partialJsonInclude,
+                        cfgOrNull != null && cfgOrNull.partialMask != null && cfgOrNull.partialMask.include != null
+                                ? cfgOrNull.partialMask.include.jsonPaths : null);
+
+                o.xmlInclude = merge(p.partialXmlInclude,
+                        cfgOrNull != null && cfgOrNull.partialMask != null && cfgOrNull.partialMask.include != null
+                                ? cfgOrNull.partialMask.include.xPaths : null);
+
+                // exclude paths (DB + YAML)
+                o.jsonExclude = merge(p.partialJsonExclude,
+                        cfgOrNull != null && cfgOrNull.partialMask != null && cfgOrNull.partialMask.exclude != null
+                                ? cfgOrNull.partialMask.exclude.jsonPaths : null);
+
+                o.xmlExclude = merge(p.partialXmlExclude,
+                        cfgOrNull != null && cfgOrNull.partialMask != null && cfgOrNull.partialMask.exclude != null
+                                ? cfgOrNull.partialMask.exclude.xPaths : null);
+
+                maskEngine.apply(r, o);
+            }
+        }
+    }
+
+    private List<String> merge(List<String> a, List<String> b) {
+        LinkedHashSet<String> s = new LinkedHashSet<>();
+        if (a != null) s.addAll(a);
+        if (b != null) s.addAll(b);
+        return s.isEmpty() ? null : new ArrayList<>(s);
+    }
+}

@@ -1,0 +1,61 @@
+package com.acme.graavl.mask;
+
+import java.util.List;
+
+public class MaskOptions {
+
+    public enum Mode {
+        FULL,
+        PARTIAL
+    }
+
+    private Mode mode;
+
+    private List<String> jsonInclude;
+    private List<String> jsonExclude;
+
+    private List<String> xmlInclude;
+    private List<String> xmlExclude;
+
+    public MaskOptions() {}
+
+    public Mode getMode() {
+        return mode;
+    }
+
+    public void setMode(Mode mode) {
+        this.mode = mode;
+    }
+
+    public List<String> getJsonInclude() {
+        return jsonInclude;
+    }
+
+    public void setJsonInclude(List<String> jsonInclude) {
+        this.jsonInclude = jsonInclude;
+    }
+
+    public List<String> getJsonExclude() {
+        return jsonExclude;
+    }
+
+    public void setJsonExclude(List<String> jsonExclude) {
+        this.jsonExclude = jsonExclude;
+    }
+
+    public List<String> getXmlInclude() {
+        return xmlInclude;
+    }
+
+    public void setXmlInclude(List<String> xmlInclude) {
+        this.xmlInclude = xmlInclude;
+    }
+
+    public List<String> getXmlExclude() {
+        return xmlExclude;
+    }
+
+    public void setXmlExclude(List<String> xmlExclude) {
+        this.xmlExclude = xmlExclude;
+    }
+}

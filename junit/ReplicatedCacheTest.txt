@@ -1,0 +1,75 @@
+package com.acme.graavl.raft;
+
+import io.microraft.*;
+import io.microraft.impl.local.LocalRaftEndpoint;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class ReplicatedCacheTest {
+
+    @Test
+    void testReplicationAndLeaderFailover() throws Exception {
+
+        // Create 3 endpoints
+        RaftEndpoint n1 = LocalRaftEndpoint.newEndpoint("n1");
+        RaftEndpoint n2 = LocalRaftEndpoint.newEndpoint("n2");
+        RaftEndpoint n3 = LocalRaftEndpoint.newEndpoint("n3");
+
+        List<RaftEndpoint> members = List.of(n1, n2, n3);
+
+        ReplicatedCacheStateMachine sm1 = new ReplicatedCacheStateMachine();
+        ReplicatedCacheStateMachine sm2 = new ReplicatedCacheStateMachine();
+        ReplicatedCacheStateMachine sm3 = new ReplicatedCacheStateMachine();
+
+        RaftNode node1 = RaftNodeFactory.createNode("n1", members, sm1);
+        RaftNode node2 = RaftNodeFactory.createNode("n2", members, sm2);
+        RaftNode node3 = RaftNodeFactory.createNode("n3", members, sm3);
+
+        node1.start();
+        node2.start();
+        node3.start();
+
+        TimeUnit.SECONDS.sleep(2); // allow election
+
+        RaftNode leader = List.of(node1, node2, node3).stream()
+                .filter(n -> n.getStatus().getRole() == RaftRole.LEADER)
+                .findFirst()
+                .orElseThrow();
+
+        LeaderAwareReplicatedCache cache =
+                new LeaderAwareReplicatedCache(
+                        leader,
+                        leader == node1 ? sm1 :
+                        leader == node2 ? sm2 : sm3
+                );
+
+        cache.put("policyKey", "value1".getBytes()).get(3, TimeUnit.SECONDS);
+
+        TimeUnit.SECONDS.sleep(1);
+
+        assertEquals("value1",
+                new String(sm1.get("policyKey")));
+        assertEquals("value1",
+                new String(sm2.get("policyKey")));
+        assertEquals("value1",
+                new String(sm3.get("policyKey")));
+
+        // Simulate leader shutdown
+        leader.terminate().join();
+
+        TimeUnit.SECONDS.sleep(3); // allow new election
+
+        RaftNode newLeader = List.of(node1, node2, node3).stream()
+                .filter(n -> !n.isTerminated())
+                .filter(n -> n.getStatus().getRole() == RaftRole.LEADER)
+                .findFirst()
+                .orElseThrow();
+
+        assertNotEquals(leader.getLocalEndpoint(),
+                newLeader.getLocalEndpoint());
+    }
+}

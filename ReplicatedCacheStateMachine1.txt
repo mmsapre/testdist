@@ -1,0 +1,41 @@
+package com.acme.graavl.raft;
+
+import io.microraft.statemachine.StateMachine;
+
+import java.io.Serializable;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class ReplicatedCacheStateMachine implements StateMachine {
+
+    private final Map<String, byte[]> cache = new ConcurrentHashMap<>();
+
+    @Override
+    public Object runOperation(long commitIndex, Object operation) {
+
+        if (operation instanceof PutCommand put) {
+            cache.put(put.key(), put.value());
+        }
+
+        if (operation instanceof RemoveCommand rem) {
+            cache.remove(rem.key());
+        }
+
+        return null;
+    }
+
+    public byte[] get(String key) {
+        return cache.get(key);
+    }
+
+    @Override
+    public Object getNewTermOperation() {
+        return null;
+    }
+
+    @Override
+    public void takeSnapshot(long commitIndex, java.util.function.Consumer<Object> consumer) {}
+
+    @Override
+    public void installSnapshot(long commitIndex, java.util.List<Object> snapshotChunks) {}
+}

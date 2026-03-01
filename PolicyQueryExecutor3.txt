@@ -1,0 +1,148 @@
+package com.acme.graavl.policy;
+
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.util.*;
+
+/**
+ * Executes policy queries and maps DB rows into PolicyResult.
+ *
+ * Expected SQL to return:
+ *  policy_id
+ *  policy_key
+ *  priority
+ *  result (PASS | FILTER | FULL_MASK | PARTIAL_MASK)
+ *  json_logic (optional)
+ *  mask_include (optional CSV)
+ *  mask_exclude (optional CSV)
+ *  full_exclude (optional CSV)
+ *
+ * Query must already include ORDER BY priority ASC
+ * (1 = highest)
+ */
+public class PolicyQueryExecutor {
+
+    private final NamedParameterJdbcTemplate jdbc;
+
+    public PolicyQueryExecutor(NamedParameterJdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    /**
+     * Executes a policy query.
+     *
+     * @param sql    SQL containing named parameters
+     * @param params Parameters including IN lists
+     * @return List of PolicyResult
+     */
+    public List<PolicyResult> execute(String sql,
+                                      Map<String, Object> params) {
+
+        if (sql == null || sql.isBlank()) {
+            return List.of();
+        }
+
+        Map<String, Object> safeParams =
+                params == null ? Collections.emptyMap() : params;
+
+        return jdbc.query(sql, safeParams, (rs, rowNum) -> mapRow(rs));
+    }
+
+    // --------------------------------------------------------
+    // Row Mapping
+    // --------------------------------------------------------
+
+    private PolicyResult mapRow(ResultSet rs) throws Exception {
+
+        PolicyResult r = new PolicyResult();
+
+        r.setPolicyId(getLong(rs, "policy_id"));
+        r.setPolicyKey(getString(rs, "policy_key"));
+        r.setPriority(getInt(rs, "priority"));
+
+        String result = getString(rs, "result");
+        if (result != null) {
+            r.setAction(PolicyAction.fromDb(result));
+        }
+
+        // Optional fields
+        if (hasColumn(rs, "json_logic")) {
+            r.setJsonLogic(getString(rs, "json_logic"));
+        }
+
+        if (hasColumn(rs, "mask_include")) {
+            r.setMaskIncludePaths(parseCsv(getString(rs, "mask_include")));
+        }
+
+        if (hasColumn(rs, "mask_exclude")) {
+            r.setMaskExcludePaths(parseCsv(getString(rs, "mask_exclude")));
+        }
+
+        if (hasColumn(rs, "full_exclude")) {
+            r.setFullMaskExcludePaths(parseCsv(getString(rs, "full_exclude")));
+        }
+
+        return r;
+    }
+
+    // --------------------------------------------------------
+    // Helpers
+    // --------------------------------------------------------
+
+    private boolean hasColumn(ResultSet rs, String column) {
+        try {
+            ResultSetMetaData meta = rs.getMetaData();
+            for (int i = 1; i <= meta.getColumnCount(); i++) {
+                if (column.equalsIgnoreCase(meta.getColumnLabel(i))) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String getString(ResultSet rs, String col) {
+        try {
+            return rs.getString(col);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private long getLong(ResultSet rs, String col) {
+        try {
+            long v = rs.getLong(col);
+            return rs.wasNull() ? 0L : v;
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    private int getInt(ResultSet rs, String col) {
+        try {
+            int v = rs.getInt(col);
+            return rs.wasNull() ? 0 : v;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private List<String> parseCsv(String csv) {
+        if (csv == null || csv.isBlank()) {
+            return List.of();
+        }
+        String[] parts = csv.split(",");
+        List<String> list = new ArrayList<>();
+        for (String p : parts) {
+            String trimmed = p.trim();
+            if (!trimmed.isEmpty()) {
+                list.add(trimmed);
+            }
+        }
+        return list;
+    }
+}

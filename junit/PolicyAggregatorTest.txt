@@ -1,0 +1,33 @@
+package com.acme.graavl;
+
+import com.acme.graavl.policy.*;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class PolicyAggregatorTest {
+
+    @Test
+    void picksLowestPriorityThenStrongestAction() {
+        PolicyAggregator ag = new PolicyAggregator();
+
+        PolicyResult a = new PolicyResult();
+        a.setPriority(5);
+        a.setAction(PolicyAction.PARTIAL_MASK);
+
+        PolicyResult b = new PolicyResult();
+        b.setPriority(1);
+        b.setAction(PolicyAction.PASS);
+
+        PolicyResult c = new PolicyResult();
+        c.setPriority(1);
+        c.setAction(PolicyAction.FILTER);
+
+        PolicyResult win = ag.resolve(List.of(a, b, c));
+        assertNotNull(win);
+        assertEquals(1, win.getPriority());
+        assertEquals(PolicyAction.FILTER, win.getAction());
+    }
+}

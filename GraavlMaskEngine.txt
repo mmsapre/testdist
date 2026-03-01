@@ -1,0 +1,149 @@
+package com.acme.graavl.mask;
+
+import com.acme.graavl.core.PipelineRecord;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.*;
+import java.io.ByteArrayInputStream;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class GraavlMaskEngine {
+
+    private static final String MASK = "****";
+
+    public void apply(PipelineRecord r, MaskOptions o) throws Exception {
+        if (r == null || r.payload == null || o == null || o.mode == null) return;
+
+        if ("JSON".equalsIgnoreCase(r.payloadType)) {
+            r.payload = applyJson(r.payload, o);
+            return;
+        }
+
+        if ("XML".equalsIgnoreCase(r.payloadType)) {
+            r.payload = applyXml(r.payload, o);
+        }
+    }
+
+    private String applyJson(String original, MaskOptions o) {
+        Set<String> exclude = new HashSet<>(safe(o.jsonExclude));
+
+        if (o.mode == MaskOptions.Mode.FULL) {
+
+            // 1) mask all
+            DocumentContext masked = JsonPath.parse(maskAll(JsonPath.parse(original).json()));
+
+            // 2) restore excluded from original
+            for (String p : exclude) {
+                try {
+                    Object val = JsonPath.read(original, p);
+                    masked.set(p, val);
+                } catch (Exception ignored) {}
+            }
+
+            return masked.jsonString();
+        }
+
+        // PARTIAL: mask only include paths, but never excluded
+        DocumentContext ctx = JsonPath.parse(original);
+
+        for (String p : safe(o.jsonInclude)) {
+            if (exclude.contains(p)) continue;
+            try { ctx.set(p, MASK); } catch (Exception ignored) {}
+        }
+
+        // ensure excluded paths preserved (in case include overlapped with wildcard variants)
+        for (String p : exclude) {
+            try {
+                Object val = JsonPath.read(original, p);
+                ctx.set(p, val);
+            } catch (Exception ignored) {}
+        }
+
+        return ctx.jsonString();
+    }
+
+    private Object maskAll(Object node) {
+        if (node instanceof List<?> list) {
+            return list.stream().map(this::maskAll).toList();
+        }
+        if (node instanceof java.util.Map<?,?> map) {
+            java.util.Map<String,Object> out = new java.util.LinkedHashMap<>();
+            for (Object k : map.keySet()) out.put(String.valueOf(k), MASK);
+            return out;
+        }
+        return MASK;
+    }
+
+    private String applyXml(String original, MaskOptions o) throws Exception {
+
+        Document doc = DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new ByteArrayInputStream(original.getBytes(StandardCharsets.UTF_8)));
+
+        XPath xp = XPathFactory.newInstance().newXPath();
+        Set<String> exclude = new HashSet<>(safe(o.xmlExclude));
+
+        if (o.mode == MaskOptions.Mode.FULL) {
+
+            NodeList texts = (NodeList) xp.evaluate("//text()", doc, XPathConstants.NODESET);
+            for (int i = 0; i < texts.getLength(); i++) {
+                texts.item(i).setNodeValue(MASK);
+            }
+
+            // restore excluded by re-reading from original doc
+            Document origDoc = DocumentBuilderFactory.newInstance()
+                    .newDocumentBuilder()
+                    .parse(new ByteArrayInputStream(original.getBytes(StandardCharsets.UTF_8)));
+
+            for (String p : exclude) {
+                try {
+                    NodeList keep = (NodeList) xp.evaluate(p, doc, XPathConstants.NODESET);
+                    NodeList orig = (NodeList) xp.evaluate(p, origDoc, XPathConstants.NODESET);
+                    int len = Math.min(keep.getLength(), orig.getLength());
+                    for (int i = 0; i < len; i++) {
+                        keep.item(i).setNodeValue(orig.item(i).getTextContent());
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            return toString(doc);
+        }
+
+        // PARTIAL: mask only include paths, skip exclude
+        for (String p : safe(o.xmlInclude)) {
+            if (exclude.contains(p)) continue;
+            try {
+                NodeList nodes = (NodeList) xp.evaluate(p, doc, XPathConstants.NODESET);
+                for (int i = 0; i < nodes.getLength(); i++) {
+                    nodes.item(i).setNodeValue(MASK);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        return toString(doc);
+    }
+
+    private List<String> safe(List<String> list) {
+        return list == null ? List.of() : list;
+    }
+
+    private String toString(Document doc) throws Exception {
+        Transformer tf = TransformerFactory.newInstance().newTransformer();
+        tf.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+        tf.setOutputProperty(OutputKeys.INDENT, "no");
+        StringWriter sw = new StringWriter();
+        tf.transform(new DOMSource(doc), new StreamResult(sw));
+        return sw.toString();
+    }
+}

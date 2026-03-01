@@ -1,0 +1,110 @@
+package com.acme.graavl.policy;
+
+import com.acme.graavl.exception.GraavlSystemException;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
+import java.sql.ResultSet;
+import java.util.*;
+
+/**
+ * Executes policy DB queries and converts rows to PolicyResult.
+ */
+public class PolicyQueryExecutor {
+
+    private final NamedParameterJdbcTemplate jdbc;
+
+    public PolicyQueryExecutor(NamedParameterJdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    /**
+     * Execute a policy query using extracted criteria values.
+     *
+     * @param sql policy SQL
+     * @param extractedValues key -> list of extracted values
+     * @return list of policy results
+     */
+    public List<PolicyResult> execute(
+            String sql,
+            Map<String, List<Object>> extractedValues) {
+
+        try {
+            Map<String, Object> params = new HashMap<>();
+
+            // Flatten values for IN (:param)
+            for (Map.Entry<String, List<Object>> e : extractedValues.entrySet()) {
+                params.put(e.getKey(), e.getValue());
+            }
+
+            return jdbc.query(sql, params, this::mapRow);
+
+        } catch (Exception e) {
+            throw new GraavlSystemException(
+                    "POLICY_QUERY_FAILED",
+                    "Failed executing policy query",
+                    extractedValues,
+                    e
+            );
+        }
+    }
+
+    // ---------------- Row Mapper ----------------
+
+    private PolicyResult mapRow(ResultSet rs, int rowNum) {
+        try {
+            PolicyResult r = new PolicyResult();
+
+            r.setPolicyId(rs.getLong("policy_id"));
+            r.setPolicyKey(rs.getString("policy_key"));
+            r.setPriority(rs.getInt("priority"));
+            r.setAction(PolicyAction.valueOf(rs.getString("result")));
+
+            // Optional JSON-Logic
+            if (hasColumn(rs, "json_logic")) {
+                r.setJsonLogic(rs.getString("json_logic"));
+            }
+
+            // PARTIAL MASK include/exclude
+            if (hasColumn(rs, "mask_json_include")) {
+                r.setMaskIncludePaths(split(rs.getString("mask_json_include")));
+            }
+            if (hasColumn(rs, "mask_json_exclude")) {
+                r.setMaskExcludePaths(split(rs.getString("mask_json_exclude")));
+            }
+
+            // FULL MASK exclude
+            if (hasColumn(rs, "full_mask_exclude")) {
+                r.setFullMaskExcludePaths(split(rs.getString("full_mask_exclude")));
+            }
+
+            return r;
+
+        } catch (Exception e) {
+            throw new GraavlSystemException(
+                    "POLICY_ROW_MAPPING_FAILED",
+                    "Failed mapping policy row",
+                    null,
+                    e
+            );
+        }
+    }
+
+    // ---------------- Helpers ----------------
+
+    private List<String> split(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    private boolean hasColumn(ResultSet rs, String column) {
+        try {
+            rs.findColumn(column);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}

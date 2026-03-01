@@ -1,0 +1,37 @@
+package com.acme.graavl.raft;
+
+import io.microraft.RaftNode;
+import io.microraft.RaftRole;
+
+import java.util.concurrent.CompletableFuture;
+
+public class LeaderAwareReplicatedCache {
+
+    private final RaftNode node;
+    private final ReplicatedCacheStateMachine stateMachine;
+
+    public LeaderAwareReplicatedCache(RaftNode node,
+                                      ReplicatedCacheStateMachine sm) {
+        this.node = node;
+        this.stateMachine = sm;
+    }
+
+    public boolean isLeader() {
+        return node.getStatus().getRole() == RaftRole.LEADER;
+    }
+
+    public CompletableFuture<Void> put(String key, byte[] value) {
+
+        if (!isLeader()) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("Not leader"));
+        }
+
+        return node.replicate(new PutCommand(key, value))
+                .thenApply(r -> null);
+    }
+
+    public byte[] get(String key) {
+        return stateMachine.get(key);
+    }
+}

@@ -1,0 +1,15 @@
+package com.acme.graavl.validation;
+
+import java.util.*;
+
+public class ExtractedContext {
+    private final Map<String, List<Object>> values = new LinkedHashMap<>();
+
+    public void put(String key, List<Object> vals) {
+        values.put(key, vals == null ? List.of() : vals);
+    }
+
+    public Map<String, List<Object>> getValues() {
+        return values;
+    }
+}

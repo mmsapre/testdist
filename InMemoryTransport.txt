@@ -1,0 +1,40 @@
+package com.acme.graavl.raft;
+
+import io.microraft.transport.Transport;
+import io.microraft.RaftEndpoint;
+import io.microraft.model.message.RaftMessage;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class InMemoryTransport implements Transport {
+
+    private static final Map<RaftEndpoint, InMemoryTransport> registry = new ConcurrentHashMap<>();
+
+    private final RaftEndpoint local;
+
+    public InMemoryTransport(RaftEndpoint local) {
+        this.local = local;
+        registry.put(local, this);
+    }
+
+    private io.microraft.RaftNode node;
+
+    public void bind(io.microraft.RaftNode node) {
+        this.node = node;
+    }
+
+    @Override
+    public void send(RaftEndpoint target, RaftMessage message) {
+        InMemoryTransport remote = registry.get(target);
+        if (remote != null) {
+            remote.node.handle(message);
+        }
+    }
+
+    @Override
+    public void discoverNode(RaftEndpoint endpoint) {}
+
+    @Override
+    public void undiscoverNode(RaftEndpoint endpoint) {}
+}

@@ -1,0 +1,143 @@
+package com.acme.graavl.audit;
+
+import com.acme.graavl.model.DistributionAuditEvent;
+import com.hazelcast.function.FunctionEx;
+import com.hazelcast.ringbuffer.ReadResultSet;
+import com.hazelcast.ringbuffer.Ringbuffer;
+import org.springframework.r2dbc.core.DatabaseClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Drains Hazelcast Ringbuffer audit events and persists them into
+ * distribution_audit table using R2DBC.
+ *
+ * Designed for:
+ *  - Non-blocking persistence
+ *  - Safe sequence tracking
+ *  - Optional replay support
+ */
+public class AuditRingBufferR2dbcWriter {
+
+    private final Ringbuffer<DistributionAuditEvent> ringbuffer;
+    private final DatabaseClient databaseClient;
+    private final String table;
+
+    /** Next sequence to read */
+    private final AtomicLong nextSequence = new AtomicLong();
+
+    public AuditRingBufferR2dbcWriter(
+            Ringbuffer<DistributionAuditEvent> ringbuffer,
+            DatabaseClient databaseClient,
+            String table) {
+
+        this.ringbuffer = ringbuffer;
+        this.databaseClient = databaseClient;
+        this.table = table;
+    }
+
+    /**
+     * Starts periodic draining.
+     *
+     * By default starts from tailSequence() + 1
+     * (Change to headSequence() if replay needed)
+     */
+    public Mono<Void> start() {
+
+        return Mono.fromRunnable(() -> {
+                    long startFrom = ringbuffer.tailSequence() + 1;
+                    nextSequence.set(startFrom);
+                })
+                .thenMany(
+                        Flux.interval(Duration.ofMillis(200))
+                                .concatMap(tick -> drainOnce(2000))
+                )
+                .then();
+    }
+
+    /**
+     * Reads up to maxCount entries from ringbuffer.
+     */
+    private Mono<Void> drainOnce(int maxCount) {
+
+        long startSeq = nextSequence.get();
+        long tail = ringbuffer.tailSequence();
+
+        if (tail < startSeq) {
+            return Mono.empty();
+        }
+
+        int toRead = (int) Math.min(maxCount, tail - startSeq + 1);
+
+        return Mono.fromFuture(
+                        ringbuffer.readManyAsync(
+                                startSeq,
+                                1,              // minimum batch size
+                                toRead,         // max batch size
+                                (FunctionEx<DistributionAuditEvent, Boolean>) null
+                        ).toCompletableFuture()
+                )
+                .flatMap(this::writeBatchSafely);
+    }
+
+    /**
+     * Writes a batch safely and advances sequence only after successful DB write.
+     */
+    private Mono<Void> writeBatchSafely(ReadResultSet<DistributionAuditEvent> resultSet) {
+
+        if (resultSet == null || resultSet.isEmpty()) {
+            return Mono.empty();
+        }
+
+        return Flux.fromIterable(resultSet)
+                .concatMap(this::insertOne)
+                .then(Mono.fromRunnable(() -> {
+                    long lastSeq = resultSet.getSequence(resultSet.size() - 1);
+                    nextSequence.set(lastSeq + 1);
+                }))
+                .onErrorResume(ex -> {
+                    // Do NOT advance sequence on failure
+                    return Mono.error(ex);
+                });
+    }
+
+    /**
+     * Inserts one audit event.
+     */
+    private Mono<Void> insertOne(DistributionAuditEvent event) {
+
+        String sql = """
+            INSERT INTO %s
+            (load_row_id,
+             data_key,
+             service_name,
+             state,
+             publish_message,
+             request_id,
+             created_at)
+            VALUES
+            (:loadRowId,
+             :dataKey,
+             :serviceName,
+             :state,
+             :message,
+             :requestId,
+             :createdAt)
+            """.formatted(table);
+
+        return databaseClient.sql(sql)
+                .bind("loadRowId", event.loadRowId)
+                .bind("dataKey", event.dataKey)
+                .bind("serviceName", event.serviceName)
+                .bind("state", event.state.name())
+                .bind("message", event.publishMessage)
+                .bind("requestId", event.requestId)
+                .bind("createdAt", event.createdAt)
+                .fetch()
+                .rowsUpdated()
+                .then();
+    }
+}

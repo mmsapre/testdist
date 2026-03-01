@@ -1,0 +1,63 @@
+package com.acme.graavl.policy;
+
+/**
+ * Action decided by a policy rule.
+ *
+ * Ordering semantics:
+ *  1 = strongest (BLOCK)
+ *  Higher ordinal = weaker
+ */
+public enum PolicyAction {
+
+    /**
+     * Block / stop further processing.
+     */
+    FILTER(1),
+
+    /**
+     * Mask entire payload except configured exclusions.
+     */
+    FULL_MASK(2),
+
+    /**
+     * Mask only selected fields.
+     */
+    PARTIAL_MASK(3),
+
+    /**
+     * Explicit allow.
+     */
+    PASS(4);
+
+    private final int strength;
+
+    PolicyAction(int strength) {
+        this.strength = strength;
+    }
+
+    /**
+     * Lower strength value = higher precedence.
+     */
+    public int strength() {
+        return strength;
+    }
+
+    /**
+     * Safe conversion from DB value.
+     */
+    public static PolicyAction fromDb(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("PolicyAction value is null");
+        }
+        return PolicyAction.valueOf(value.trim().toUpperCase());
+    }
+
+    /**
+     * Compare two actions by precedence.
+     */
+    public static PolicyAction strongerOf(PolicyAction a, PolicyAction b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return a.strength <= b.strength ? a : b;
+    }
+}

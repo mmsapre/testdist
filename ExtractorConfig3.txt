@@ -1,0 +1,27 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class ExtractorConfig {
+
+    private String type; // JSON_PATH | XPATH
+    private List<String> paths;
+
+    public ExtractorConfig() {}
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public List<String> getPaths() {
+        return paths;
+    }
+
+    public void setPaths(List<String> paths) {
+        this.paths = paths;
+    }
+}

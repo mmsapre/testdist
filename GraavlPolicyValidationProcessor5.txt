@@ -1,0 +1,160 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.logic.JsonLogicEvaluator;
+import com.acme.graavl.mask.GraavlMaskEngine;
+import com.acme.graavl.mask.MaskOptions;
+import com.acme.graavl.policy.*;
+import com.acme.graavl.validation.*;
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.*;
+
+public class GraavlPolicyValidationProcessor implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final ValidationConfig validationConfig;
+    private final PolicyQueryExecutor policyQueryExecutor;
+    private final PolicyAggregator aggregator;
+    private final JsonLogicEvaluator jsonLogic;
+    private final GraavlMaskEngine maskEngine;
+
+    private final JsonPathExtractor jsonExtractor = new JsonPathExtractor();
+    private final XPathExtractor xpathExtractor = new XPathExtractor();
+
+    public GraavlPolicyValidationProcessor(
+            ValidationConfig validationConfig,
+            PolicyQueryExecutor policyQueryExecutor,
+            PolicyAggregator aggregator,
+            JsonLogicEvaluator jsonLogic,
+            GraavlMaskEngine maskEngine) {
+
+        this.validationConfig = validationConfig;
+        this.policyQueryExecutor = policyQueryExecutor;
+        this.aggregator = aggregator;
+        this.jsonLogic = jsonLogic;
+        this.maskEngine = maskEngine;
+    }
+
+    @Override
+    public PipelineRecord processRecord(Record<PipelineRecord> record) throws Exception {
+
+        PipelineRecord r = record.getPayload();
+
+        if (validationConfig == null || !validationConfig.isEnabled() || validationConfig.isBypass()) {
+            return r; // bypass: no policy evaluation
+        }
+        if (validationConfig.getPolicies() == null || validationConfig.getPolicies().isEmpty()) {
+            return r;
+        }
+
+        List<PolicyResult> matched = new ArrayList<>();
+
+        for (Map.Entry<String, PolicyConfig> entry : validationConfig.getPolicies().entrySet()) {
+
+            String policyKey = entry.getKey();
+            PolicyConfig pc = entry.getValue();
+
+            ExtractedContext extracted = extract(pc, r);
+
+            Map<String, Object> sqlParams = buildSqlParams(pc, extracted);
+
+            List<PolicyResult> rows = policyQueryExecutor.execute(pc.getQuery(), sqlParams);
+
+            // attach policyKey if DB doesn’t return it
+            for (PolicyResult pr : rows) {
+                if (pr.getPolicyKey() == null || pr.getPolicyKey().isBlank()) {
+                    pr.setPolicyKey(policyKey);
+                }
+            }
+
+            // apply json-logic filter (if json_logic exists)
+            for (PolicyResult pr : rows) {
+                String rule = pr.getJsonLogic();
+                if (rule == null || rule.isBlank()) {
+                    matched.add(pr);
+                } else {
+                    // IMPORTANT: you can pass a precomputed flat map if you store it in PipelineRecord
+                    Map<String, Object> data = Map.of("payload", r.getPayload());
+                    if (jsonLogic.evaluate(rule, data)) {
+                        matched.add(pr);
+                    }
+                }
+            }
+        }
+
+        PolicyResult decision = aggregator.resolve(matched);
+        if (decision == null) {
+            return r; // no match => implicit PASS
+        }
+
+        applyDecision(decision, r);
+
+        return r;
+    }
+
+    private ExtractedContext extract(PolicyConfig pc, PipelineRecord r) throws Exception {
+        ExtractedContext out = new ExtractedContext();
+        if (pc.getExtractor() == null) return out;
+
+        for (Map.Entry<String, ExtractorConfig> e : pc.getExtractor().entrySet()) {
+            String key = e.getKey();
+            ExtractorConfig cfg = e.getValue();
+
+            List<Object> vals;
+            if ("XML".equalsIgnoreCase(r.getPayloadType())) {
+                vals = xpathExtractor.extract(r.getPayload(), cfg);
+            } else {
+                vals = jsonExtractor.extract(r.getPayload(), cfg);
+            }
+            out.put(key, vals);
+        }
+        return out;
+    }
+
+    private Map<String, Object> buildSqlParams(PolicyConfig pc, ExtractedContext extracted) {
+        Map<String, Object> params = new LinkedHashMap<>();
+
+        Map<String, String> mapping = pc.getParameterMapping();
+        if (mapping == null) return params;
+
+        for (Map.Entry<String, String> m : mapping.entrySet()) {
+            String sqlParam = m.getKey();
+            String extractedKey = m.getValue();
+
+            List<Object> vals = extracted.getValues().getOrDefault(extractedKey, List.of());
+            params.put(sqlParam, vals);
+        }
+        return params;
+    }
+
+    private void applyDecision(PolicyResult decision, PipelineRecord r) {
+
+        switch (decision.getAction()) {
+
+            case PASS:
+                return;
+
+            case FILTER:
+                throw new RuntimeException("FILTERED by policy " + decision.getPolicyKey()
+                        + " priority=" + decision.getPriority());
+
+            case FULL_MASK: {
+                MaskOptions mo = new MaskOptions();
+                mo.setMode(MaskOptions.Mode.FULL);
+                mo.setJsonExclude(decision.getFullMaskExcludePaths());
+                maskEngine.apply(r, mo);
+                return;
+            }
+
+            case PARTIAL_MASK: {
+                MaskOptions mo = new MaskOptions();
+                mo.setMode(MaskOptions.Mode.PARTIAL);
+                mo.setJsonInclude(decision.getMaskIncludePaths());
+                mo.setJsonExclude(decision.getMaskExcludePaths());
+                maskEngine.apply(r, mo);
+            }
+        }
+    }
+}

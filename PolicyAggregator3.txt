@@ -1,0 +1,17 @@
+package com.acme.graavl.policy;
+
+import java.util.Comparator;
+import java.util.List;
+
+public class PolicyAggregator {
+
+    public PolicyResult resolve(List<PolicyResult> results) {
+        if (results == null || results.isEmpty()) return null;
+
+        return results.stream()
+                .min(Comparator
+                        .comparingInt(PolicyResult::getPriority)
+                        .thenComparingInt(r -> r.getAction().strength()))
+                .orElse(null);
+    }
+}

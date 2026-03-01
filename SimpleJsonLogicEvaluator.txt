@@ -1,0 +1,182 @@
+package com.acme.graavl.logic;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.*;
+
+public class SimpleJsonLogicEvaluator implements JsonLogicEvaluator {
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    @Override
+    public boolean evaluate(String jsonLogic, Map<String, Object> data) {
+        if (jsonLogic == null || jsonLogic.isBlank()) return true; // if rule absent -> treat as match
+        try {
+            JsonNode node = mapper.readTree(jsonLogic);
+            return truthy(eval(node, data));
+        } catch (Exception e) {
+            // If rule malformed, safest is "no match"
+            return false;
+        }
+    }
+
+    private Object eval(JsonNode node, Map<String, Object> data) {
+        if (node == null || node.isNull()) return null;
+        if (node.isBoolean()) return node.booleanValue();
+        if (node.isNumber()) return node.numberValue();
+        if (node.isTextual()) return node.textValue();
+        if (node.isArray()) {
+            List<Object> list = new ArrayList<>();
+            for (JsonNode n : node) list.add(eval(n, data));
+            return list;
+        }
+        if (!node.isObject()) return null;
+
+        // json-logic object has exactly one operator key
+        Iterator<String> fields = node.fieldNames();
+        if (!fields.hasNext()) return null;
+        String op = fields.next();
+        JsonNode args = node.get(op);
+
+        return switch (op) {
+            case "var" -> resolveVar(args, data);
+            case "==" -> cmp(args, data, "==");
+            case "!=" -> cmp(args, data, "!=");
+            case ">"  -> cmp(args, data, ">");
+            case "<"  -> cmp(args, data, "<");
+            case ">=" -> cmp(args, data, ">=");
+            case "<=" -> cmp(args, data, "<=");
+            case "!"  -> !truthy(eval(firstArg(args), data));
+            case "and" -> and(args, data);
+            case "or"  -> or(args, data);
+            case "in"  -> in(args, data);
+            default -> null;
+        };
+    }
+
+    private JsonNode firstArg(JsonNode args) {
+        if (args == null) return null;
+        if (args.isArray() && args.size() > 0) return args.get(0);
+        return args;
+    }
+
+    private Object resolveVar(JsonNode args, Map<String, Object> data) {
+        // {"var":"clientId"} or {"var":["clientId","default"]}
+        if (args == null) return null;
+        if (args.isTextual()) {
+            return getPath(data, args.textValue());
+        }
+        if (args.isArray() && args.size() >= 1) {
+            String path = args.get(0).asText();
+            Object v = getPath(data, path);
+            if (v != null) return v;
+            if (args.size() >= 2) return asJava(args.get(1));
+        }
+        return null;
+    }
+
+    private Object getPath(Map<String, Object> data, String path) {
+        // simple dot-path support: a.b.c
+        String[] parts = path.split("\\.");
+        Object cur = data;
+        for (String p : parts) {
+            if (!(cur instanceof Map<?, ?> m)) return null;
+            cur = m.get(p);
+        }
+        return cur;
+    }
+
+    private Object asJava(JsonNode n) {
+        if (n == null || n.isNull()) return null;
+        if (n.isBoolean()) return n.booleanValue();
+        if (n.isNumber()) return n.numberValue();
+        if (n.isTextual()) return n.textValue();
+        if (n.isArray()) {
+            List<Object> list = new ArrayList<>();
+            for (JsonNode c : n) list.add(asJava(c));
+            return list;
+        }
+        if (n.isObject()) return n;
+        return null;
+    }
+
+    private boolean truthy(Object v) {
+        if (v == null) return false;
+        if (v instanceof Boolean b) return b;
+        if (v instanceof Number n) return n.doubleValue() != 0.0;
+        if (v instanceof String s) return !s.isBlank();
+        if (v instanceof Collection<?> c) return !c.isEmpty();
+        return true;
+    }
+
+    private boolean and(JsonNode args, Map<String, Object> data) {
+        if (args == null || !args.isArray()) return false;
+        for (JsonNode a : args) {
+            if (!truthy(eval(a, data))) return false;
+        }
+        return true;
+    }
+
+    private boolean or(JsonNode args, Map<String, Object> data) {
+        if (args == null || !args.isArray()) return false;
+        for (JsonNode a : args) {
+            if (truthy(eval(a, data))) return true;
+        }
+        return false;
+    }
+
+    private boolean in(JsonNode args, Map<String, Object> data) {
+        if (args == null || !args.isArray() || args.size() != 2) return false;
+        Object needle = eval(args.get(0), data);
+        Object hay = eval(args.get(1), data);
+        if (hay instanceof Collection<?> c) return c.contains(needle);
+        if (hay instanceof Object[] arr) return Arrays.asList(arr).contains(needle);
+        return false;
+    }
+
+    private boolean cmp(JsonNode args, Map<String, Object> data, String op) {
+        if (args == null || !args.isArray() || args.size() != 2) return false;
+
+        Object a = eval(args.get(0), data);
+        Object b = eval(args.get(1), data);
+
+        // string compare
+        if (a instanceof String sa || b instanceof String sb) {
+            String x = Objects.toString(a, "");
+            String y = Objects.toString(b, "");
+            int c = x.compareTo(y);
+            return switch (op) {
+                case "==" -> c == 0;
+                case "!=" -> c != 0;
+                case ">"  -> c > 0;
+                case "<"  -> c < 0;
+                case ">=" -> c >= 0;
+                case "<=" -> c <= 0;
+                default -> false;
+            };
+        }
+
+        // numeric compare
+        Double x = toDouble(a);
+        Double y = toDouble(b);
+        if (x == null || y == null) return false;
+
+        return switch (op) {
+            case "==" -> x.equals(y);
+            case "!=" -> !x.equals(y);
+            case ">"  -> x > y;
+            case "<"  -> x < y;
+            case ">=" -> x >= y;
+            case "<=" -> x <= y;
+            default -> false;
+        };
+    }
+
+    private Double toDouble(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(v.toString()); }
+        catch (Exception e) { return null; }
+    }
+}

@@ -1,0 +1,75 @@
+Gravvl_policy
+
+| column          | description                              |
+| --------------- | ---------------------------------------- |
+| policy_id       | unique id                                |
+| policy_key      | policy identifier                        |
+| domain          | ACCOUNT / INSTRUMENT / CLIENT            |
+| action          | PASS / FILTER / FULL_MASK / PARTIAL_MASK |
+| priority        | 1–10 (1 highest)                         |
+| evaluation_mode | ANY_MATCH / ALL_MATCH                    |
+| enabled         | policy active flag                       |
+| description     | policy description                       |
+
+
+
+===
+
+| policy_id | policy_key           | domain  | action    | priority |
+| --------- | -------------------- | ------- | --------- | -------- |
+| 1         | PASS_GRID            | ACCOUNT | PASS      | 5        |
+| 2         | BLOCK_MRD            | ACCOUNT | FILTER    | 1        |
+| 3         | FULL_MASK_SECURITIES | ACCOUNT | FULL_MASK | 3        |
+
+
+gravvl_policy_service
+
+| column       | description                     |
+| ------------ | ------------------------------- |
+| id           | row id                          |
+| policy_id    | policy reference                |
+| service_name | distribution service            |
+| consumer     | ALICLOUD / INTERNAL / REPORTING |
+
+
+| policy_id | service_name            | consumer |
+| --------- | ----------------------- | -------- |
+| 2         | instrument-distribution | ALICLOUD |
+| 3         | instrument-distribution | INTERNAL |
+
+
+
+==
+
+gravvvl_policy_criteria
+| column         | description      |
+| -------------- | ---------------- |
+| criteria_id    | criteria id      |
+| criteria_key   | logical field    |
+| extractor_type | JSONPATH / XPATH |
+| extractor_path | payload path     |
+
+
+| criteria_id | criteria_key | extractor_path    |
+| ----------- | ------------ | ----------------- |
+| 1           | grid         | $.grid            |
+| 2           | mrdId        | $.account.mrdId   |
+| 3           | accountType  | $.account.type    |
+| 4           | isin         | $.instrument.isin |
+
+gravvl_poliy_match
+| column       | description               |
+| ------------ | ------------------------- |
+| id           | row id                    |
+| policy_id    | policy reference          |
+| criteria_key | criteria name             |
+| match_value  | value to match            |
+| lookup_set   | optional lookup list name |
+
+
+| policy_id | criteria_key | match_value        |
+| --------- | ------------ | ------------------ |
+| 1         | grid         | G001               |
+| 1         | grid         | G002               |
+| 2         | mrdId        | MRD777             |
+| 3         | accountType  | SECURITIES_ACCOUNT |

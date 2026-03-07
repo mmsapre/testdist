@@ -1,0 +1,75 @@
+package com.acme.graavl.config;
+
+import java.util.HashSet;
+import java.util.Set;
+
+public class DistributionConfigValidator {
+
+    public void validate(DistributionProperties props) {
+
+        if (props == null)
+            throw new IllegalStateException("mrd.distribution configuration missing");
+
+        validateConnector(props.getConnector());
+        validateValidator(props.getValidator());
+    }
+
+    private void validateConnector(ConnectorConfig cfg) {
+
+        if (cfg == null)
+            throw new IllegalStateException("Connector config missing");
+
+        if (cfg.getTables() == null || cfg.getTables().isEmpty())
+            throw new IllegalStateException("At least one table must be configured");
+
+        if (cfg.getColumns() == null || cfg.getColumns().isEmpty())
+            throw new IllegalStateException("Columns must be configured");
+
+        Set<String> aliases = new HashSet<>();
+
+        cfg.getTables().forEach(t -> {
+
+            if (t.getName() == null)
+                throw new IllegalStateException("Table name missing");
+
+            if (t.getAlias() == null)
+                throw new IllegalStateException("Table alias missing");
+
+            aliases.add(t.getAlias());
+        });
+
+        cfg.getColumns().forEach(c -> {
+
+            if (c.getExpr() == null)
+                throw new IllegalStateException("Column expression missing");
+
+            if (c.getAlias() == null)
+                throw new IllegalStateException("Column alias missing");
+        });
+    }
+
+    private void validateValidator(ValidationConfig cfg) {
+
+        if (cfg == null)
+            return;
+
+        if (!cfg.isEnabled())
+            return;
+
+        if (cfg.getPolicies() == null || cfg.getPolicies().isEmpty())
+            throw new IllegalStateException("Validator enabled but no policies defined");
+
+        cfg.getPolicies().forEach((k,p) -> validatePolicy(k,p));
+    }
+
+    private void validatePolicy(String key, PolicyConfig pc) {
+
+        if (pc.getQuery() == null)
+            throw new IllegalStateException(
+                    "Policy "+key+" missing query");
+
+        if (pc.getExtractor() == null)
+            throw new IllegalStateException(
+                    "Policy "+key+" extractor missing");
+    }
+}

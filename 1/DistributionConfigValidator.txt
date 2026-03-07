@@ -1,0 +1,37 @@
+package com.acme.graavl.config;
+
+public class DistributionConfigValidator {
+
+    public void validate(DistributionProperties props) {
+        if (props == null) {
+            throw new IllegalStateException("DistributionProperties missing");
+        }
+
+        validateConnector(props.getConnector());
+        validateValidator(props.getValidator());
+    }
+
+    private void validateConnector(ConnectorConfig cfg) {
+        if (cfg == null) {
+            throw new IllegalStateException("Connector config missing");
+        }
+        if (cfg.getDatasource() == null || cfg.getDatasource().isBlank()) {
+            throw new IllegalStateException("Connector datasource missing");
+        }
+        if (cfg.getTables() == null || cfg.getTables().isEmpty()) {
+            throw new IllegalStateException("Connector tables missing");
+        }
+        if (cfg.getColumns() == null || cfg.getColumns().isEmpty()) {
+            throw new IllegalStateException("Connector columns missing");
+        }
+    }
+
+    private void validateValidator(ValidationConfig cfg) {
+        if (cfg == null || !cfg.isEnabled()) {
+            return;
+        }
+        if (cfg.getPolicies() == null || cfg.getPolicies().isEmpty()) {
+            throw new IllegalStateException("Validator enabled but no policies configured");
+        }
+    }
+}

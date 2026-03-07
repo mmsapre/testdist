@@ -1,0 +1,53 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class ConnectorConfig {
+
+    private String datasource;
+
+    private List<TableConfig> tables;
+    private List<ColumnConfig> columns;
+    private List<JoinConfig> joins;
+    private List<WhereConfig> where;
+
+    public String getDatasource() {
+        return datasource;
+    }
+
+    public void setDatasource(String datasource) {
+        this.datasource = datasource;
+    }
+
+    public List<TableConfig> getTables() {
+        return tables;
+    }
+
+    public void setTables(List<TableConfig> tables) {
+        this.tables = tables;
+    }
+
+    public List<ColumnConfig> getColumns() {
+        return columns;
+    }
+
+    public void setColumns(List<ColumnConfig> columns) {
+        this.columns = columns;
+    }
+
+    public List<JoinConfig> getJoins() {
+        return joins;
+    }
+
+    public void setJoins(List<JoinConfig> joins) {
+        this.joins = joins;
+    }
+
+    public List<WhereConfig> getWhere() {
+        return where;
+    }
+
+    public void setWhere(List<WhereConfig> where) {
+        this.where = where;
+    }
+}

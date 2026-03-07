@@ -1,0 +1,60 @@
+public class DslSqlBuilder {
+
+    public String build(ConnectorConfig cfg) {
+
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT ");
+
+        List<String> cols = new ArrayList<>();
+
+        for (ColumnConfig c : cfg.getColumns()) {
+
+            cols.add(c.getExpr() + " AS " + c.getAlias());
+        }
+
+        sql.append(String.join(",", cols));
+
+        TableConfig t = cfg.getTables().get(0);
+
+        sql.append(" FROM ")
+           .append(t.getName())
+           .append(" ")
+           .append(t.getAlias());
+
+        if (cfg.getJoins() != null) {
+
+            for (JoinConfig j : cfg.getJoins()) {
+
+                sql.append(" ")
+                   .append(j.getType())
+                   .append(" JOIN ")
+                   .append(j.getRight())
+                   .append(" ON ")
+                   .append(j.getLeft())
+                   .append(" ")
+                   .append(j.getOperator())
+                   .append(" ")
+                   .append(j.getRight());
+            }
+        }
+
+        if (cfg.getWhere() != null) {
+
+            List<String> conds = new ArrayList<>();
+
+            for (WhereConfig w : cfg.getWhere()) {
+
+                conds.add(w.getColumn()
+                        + " "
+                        + w.getOperator()
+                        + " :" + w.getParam());
+            }
+
+            sql.append(" WHERE ")
+               .append(String.join(" AND ", conds));
+        }
+
+        return sql.toString();
+    }
+}

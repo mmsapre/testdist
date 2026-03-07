@@ -1,0 +1,21 @@
+package com.acme.graavl.mask;
+
+import com.acme.graavl.core.PipelineRecord;
+
+public class GraavlMaskEngine {
+
+    public void apply(PipelineRecord record, MaskOptions options) {
+        if (record == null || record.getPayload() == null || options == null) {
+            return;
+        }
+
+        if (options.getMode() == MaskOptions.Mode.FULL) {
+            record.setMasked(true);
+            return;
+        }
+
+        if (options.getMode() == MaskOptions.Mode.PARTIAL) {
+            record.setPartialMask(true);
+        }
+    }
+}

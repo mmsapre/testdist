@@ -1,0 +1,11 @@
+package com.acme.graavl.logic;
+
+import java.util.Map;
+
+public class NoopJsonLogicEvaluator implements JsonLogicEvaluator {
+
+    @Override
+    public boolean evaluate(String rule, Map<String, Object> data) {
+        return true;
+    }
+}

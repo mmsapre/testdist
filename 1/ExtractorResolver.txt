@@ -1,0 +1,18 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.core.PipelineRecord;
+
+import java.util.List;
+
+public class ExtractorResolver {
+
+    private final JsonPathExtractor jsonPathExtractor = new JsonPathExtractor();
+    private final XPathExtractor xPathExtractor = new XPathExtractor();
+
+    public List<Object> extract(PipelineRecord record, ExtractorConfig cfg) throws Exception {
+        if ("XML".equalsIgnoreCase(record.getPayloadType())) {
+            return xPathExtractor.extract(record.getPayload(), cfg);
+        }
+        return jsonPathExtractor.extract(record.getPayload(), cfg);
+    }
+}

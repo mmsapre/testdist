@@ -1,0 +1,50 @@
+package com.acme.graavl.config;
+
+public class JoinConfig {
+
+    private String joinType;
+    private String left;
+    private String operator;
+    private String right;
+    private String rightTableAlias;
+
+    public String getJoinType() {
+        return joinType;
+    }
+
+    public void setJoinType(String joinType) {
+        this.joinType = joinType;
+    }
+
+    public String getLeft() {
+        return left;
+    }
+
+    public void setLeft(String left) {
+        this.left = left;
+    }
+
+    public String getOperator() {
+        return operator;
+    }
+
+    public void setOperator(String operator) {
+        this.operator = operator;
+    }
+
+    public String getRight() {
+        return right;
+    }
+
+    public void setRight(String right) {
+        this.right = right;
+    }
+
+    public String getRightTableAlias() {
+        return rightTableAlias;
+    }
+
+    public void setRightTableAlias(String rightTableAlias) {
+        this.rightTableAlias = rightTableAlias;
+    }
+}

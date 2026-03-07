@@ -1,0 +1,47 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+import java.util.Map;
+
+public class ConditionConfig {
+
+    private String operator; // = or IN
+    private List<String> values;
+
+    public boolean evaluate(Map<String, List<Object>> extracted) {
+        if (values == null || values.isEmpty()) {
+            return false;
+        }
+
+        for (List<Object> list : extracted.values()) {
+            for (Object value : list) {
+                String s = String.valueOf(value);
+
+                if ("=".equals(operator) && values.contains(s)) {
+                    return true;
+                }
+                if ("IN".equalsIgnoreCase(operator) && values.contains(s)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public String getOperator() {
+        return operator;
+    }
+
+    public void setOperator(String operator) {
+        this.operator = operator;
+    }
+
+    public List<String> getValues() {
+        return values;
+    }
+
+    public void setValues(List<String> values) {
+        this.values = values;
+    }
+}

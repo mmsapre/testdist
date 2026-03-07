@@ -1,0 +1,23 @@
+package com.acme.graavl.config;
+
+public class ColumnConfig {
+
+    private String expr;
+    private String alias;
+
+    public String getExpr() {
+        return expr;
+    }
+
+    public void setExpr(String expr) {
+        this.expr = expr;
+    }
+
+    public String getAlias() {
+        return alias;
+    }
+
+    public void setAlias(String alias) {
+        this.alias = alias;
+    }
+}

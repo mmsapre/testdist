@@ -1,0 +1,51 @@
+package com.acme.graavl.config;
+
+public class DistributionProperties {
+
+    private String serviceName;
+    private String strategy;
+    private String condition;
+
+    private ConnectorConfig connector;
+    private ValidationConfig validator;
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public String getStrategy() {
+        return strategy;
+    }
+
+    public void setStrategy(String strategy) {
+        this.strategy = strategy;
+    }
+
+    public String getCondition() {
+        return condition;
+    }
+
+    public void setCondition(String condition) {
+        this.condition = condition;
+    }
+
+    public ConnectorConfig getConnector() {
+        return connector;
+    }
+
+    public void setConnector(ConnectorConfig connector) {
+        this.connector = connector;
+    }
+
+    public ValidationConfig getValidator() {
+        return validator;
+    }
+
+    public void setValidator(ValidationConfig validator) {
+        this.validator = validator;
+    }
+}

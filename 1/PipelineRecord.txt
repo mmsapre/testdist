@@ -1,0 +1,82 @@
+package com.acme.graavl.core;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+public class PipelineRecord {
+
+    private String requestId;
+    private String payload;
+    private String payloadType; // JSON or XML
+
+    private Map<String, Object> event = new LinkedHashMap<>();
+    private Map<String, Object> queryResult = new LinkedHashMap<>();
+
+    private boolean filtered;
+    private boolean masked;
+    private boolean partialMask;
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
+    public String getPayload() {
+        return payload;
+    }
+
+    public void setPayload(String payload) {
+        this.payload = payload;
+    }
+
+    public String getPayloadType() {
+        return payloadType;
+    }
+
+    public void setPayloadType(String payloadType) {
+        this.payloadType = payloadType;
+    }
+
+    public Map<String, Object> getEvent() {
+        return event;
+    }
+
+    public void setEvent(Map<String, Object> event) {
+        this.event = event;
+    }
+
+    public Map<String, Object> getQueryResult() {
+        return queryResult;
+    }
+
+    public void setQueryResult(Map<String, Object> queryResult) {
+        this.queryResult = queryResult;
+    }
+
+    public boolean isFiltered() {
+        return filtered;
+    }
+
+    public void setFiltered(boolean filtered) {
+        this.filtered = filtered;
+    }
+
+    public boolean isMasked() {
+        return masked;
+    }
+
+    public void setMasked(boolean masked) {
+        this.masked = masked;
+    }
+
+    public boolean isPartialMask() {
+        return partialMask;
+    }
+
+    public void setPartialMask(boolean partialMask) {
+        this.partialMask = partialMask;
+    }
+}

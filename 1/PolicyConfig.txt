@@ -1,0 +1,107 @@
+package com.acme.graavl.config;
+
+import com.acme.graavl.policy.PolicyAction;
+import com.acme.graavl.validation.ExtractorConfig;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+public class PolicyConfig {
+
+    private String mode; // PATH_ONLY or POLICY_LOOKUP
+    private Integer priority;
+    private PolicyAction defaultAction;
+
+    private String datasource;
+    private String query;
+
+    private Map<String, ExtractorConfig> extractor = new LinkedHashMap<>();
+    private Map<String, String> parameterMapping = new LinkedHashMap<>();
+
+    private ConditionConfig conditionEvaluator;
+
+    private List<String> includePaths = new ArrayList<>();
+    private List<String> excludePaths = new ArrayList<>();
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
+
+    public Integer getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Integer priority) {
+        this.priority = priority;
+    }
+
+    public PolicyAction getDefaultAction() {
+        return defaultAction;
+    }
+
+    public void setDefaultAction(PolicyAction defaultAction) {
+        this.defaultAction = defaultAction;
+    }
+
+    public String getDatasource() {
+        return datasource;
+    }
+
+    public void setDatasource(String datasource) {
+        this.datasource = datasource;
+    }
+
+    public String getQuery() {
+        return query;
+    }
+
+    public void setQuery(String query) {
+        this.query = query;
+    }
+
+    public Map<String, ExtractorConfig> getExtractor() {
+        return extractor;
+    }
+
+    public void setExtractor(Map<String, ExtractorConfig> extractor) {
+        this.extractor = extractor;
+    }
+
+    public Map<String, String> getParameterMapping() {
+        return parameterMapping;
+    }
+
+    public void setParameterMapping(Map<String, String> parameterMapping) {
+        this.parameterMapping = parameterMapping;
+    }
+
+    public ConditionConfig getConditionEvaluator() {
+        return conditionEvaluator;
+    }
+
+    public void setConditionEvaluator(ConditionConfig conditionEvaluator) {
+        this.conditionEvaluator = conditionEvaluator;
+    }
+
+    public List<String> getIncludePaths() {
+        return includePaths;
+    }
+
+    public void setIncludePaths(List<String> includePaths) {
+        this.includePaths = includePaths;
+    }
+
+    public List<String> getExcludePaths() {
+        return excludePaths;
+    }
+
+    public void setExcludePaths(List<String> excludePaths) {
+        this.excludePaths = excludePaths;
+    }
+}

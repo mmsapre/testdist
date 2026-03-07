@@ -1,0 +1,50 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class DslSqlBuilder {
+
+    public String build(ConnectorConfig cfg) {
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT ");
+
+        List<String> cols = new ArrayList<>();
+        for (ColumnConfig c : cfg.getColumns()) {
+            cols.add(c.getExpr() + " AS " + c.getAlias());
+        }
+
+        sql.append(String.join(", ", cols));
+
+        TableConfig root = cfg.getTables().get(0);
+        sql.append(" FROM ").append(root.getName()).append(" ").append(root.getAlias());
+
+        for (JoinConfig j : cfg.getJoins()) {
+            sql.append(" ")
+               .append(j.getJoinType())
+               .append(" JOIN ")
+               .append(j.getRightTableAlias())
+               .append(" ON ")
+               .append(j.getLeft())
+               .append(" ")
+               .append(j.getOperator())
+               .append(" ")
+               .append(j.getRight());
+        }
+
+        if (cfg.getWhere() != null && !cfg.getWhere().isEmpty()) {
+            List<String> where = new ArrayList<>();
+
+            for (WhereConfig w : cfg.getWhere()) {
+                where.add(w.getColumn() + " " + w.getOperator() + " :" + w.getParam());
+            }
+
+            sql.append(" WHERE ").append(String.join(" AND ", where));
+        }
+
+        return sql.toString();
+    }
+}

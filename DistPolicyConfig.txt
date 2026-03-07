@@ -1,0 +1,26 @@
+package com.acme.graavl.config;
+
+import java.util.Map;
+
+public class PolicyConfig {
+
+    private String query;
+
+    private Map<String,ExtractorConfig> extractor;
+
+    public String getQuery() {
+        return query;
+    }
+
+    public void setQuery(String query) {
+        this.query = query;
+    }
+
+    public Map<String, ExtractorConfig> getExtractor() {
+        return extractor;
+    }
+
+    public void setExtractor(Map<String, ExtractorConfig> extractor) {
+        this.extractor = extractor;
+    }
+}

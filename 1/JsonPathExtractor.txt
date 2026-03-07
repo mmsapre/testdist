@@ -1,0 +1,21 @@
+package com.acme.graavl.validation;
+
+import com.jayway.jsonpath.JsonPath;
+
+import java.util.List;
+
+public class JsonPathExtractor {
+
+    @SuppressWarnings("unchecked")
+    public List<Object> extract(String json, ExtractorConfig cfg) {
+        Object result = JsonPath.read(json, cfg.getPath());
+
+        if (result == null) {
+            return List.of();
+        }
+        if (result instanceof List<?>) {
+            return (List<Object>) result;
+        }
+        return List.of(result);
+    }
+}

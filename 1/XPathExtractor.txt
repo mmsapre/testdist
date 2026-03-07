@@ -1,0 +1,33 @@
+package com.acme.graavl.validation;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.*;
+import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+public class XPathExtractor {
+
+    public List<Object> extract(String xml, ExtractorConfig cfg) throws Exception {
+        Document doc = DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xml.getBytes()));
+
+        XPath xpath = XPathFactory.newInstance().newXPath();
+
+        NodeList nodes = (NodeList) xpath.evaluate(
+                cfg.getPath(),
+                doc,
+                XPathConstants.NODESET
+        );
+
+        List<Object> out = new ArrayList<>();
+        for (int i = 0; i < nodes.getLength(); i++) {
+            out.add(nodes.item(i).getTextContent());
+        }
+        return out;
+    }
+}

@@ -1,0 +1,25 @@
+package com.acme.graavl.policy;
+
+public enum PolicyAction {
+    FILTER(1),
+    FULL_MASK(2),
+    PARTIAL_MASK(3),
+    PASS(4);
+
+    private final int strength;
+
+    PolicyAction(int strength) {
+        this.strength = strength;
+    }
+
+    public int getStrength() {
+        return strength;
+    }
+
+    public static PolicyAction fromDb(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Policy action cannot be null");
+        }
+        return PolicyAction.valueOf(value.trim().toUpperCase());
+    }
+}

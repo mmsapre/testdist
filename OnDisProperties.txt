@@ -1,0 +1,26 @@
+package com.acme.graavl.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "mrd.distribution")
+public class DistributionProperties {
+
+    private ConnectorConfig connector;
+    private ValidationConfig validator;
+
+    public ConnectorConfig getConnector() {
+        return connector;
+    }
+
+    public void setConnector(ConnectorConfig connector) {
+        this.connector = connector;
+    }
+
+    public ValidationConfig getValidator() {
+        return validator;
+    }
+
+    public void setValidator(ValidationConfig validator) {
+        this.validator = validator;
+    }
+}

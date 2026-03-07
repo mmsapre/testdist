@@ -1,0 +1,171 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.PolicyConfig;
+import com.acme.graavl.config.ValidationConfig;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.logic.JsonLogicEvaluator;
+import com.acme.graavl.mask.GraavlMaskEngine;
+import com.acme.graavl.mask.MaskOptions;
+import com.acme.graavl.policy.*;
+import com.acme.graavl.validation.*;
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.*;
+
+public class GraavlPolicyValidationProcessor implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final ValidationConfig validationConfig;
+    private final PolicyQueryExecutor policyQueryExecutor;
+    private final PolicyAggregator aggregator;
+    private final JsonLogicEvaluator jsonLogic;
+    private final GraavlMaskEngine maskEngine;
+
+    private final ExtractorResolver extractorResolver = new ExtractorResolver();
+
+    public GraavlPolicyValidationProcessor(
+            ValidationConfig validationConfig,
+            PolicyQueryExecutor policyQueryExecutor,
+            PolicyAggregator aggregator,
+            JsonLogicEvaluator jsonLogic,
+            GraavlMaskEngine maskEngine) {
+
+        this.validationConfig = validationConfig;
+        this.policyQueryExecutor = policyQueryExecutor;
+        this.aggregator = aggregator;
+        this.jsonLogic = jsonLogic;
+        this.maskEngine = maskEngine;
+    }
+
+    @Override
+    public PipelineRecord processRecord(Record<PipelineRecord> record) throws Exception {
+        PipelineRecord r = record.getPayload();
+
+        if (validationConfig == null || !validationConfig.isEnabled() || validationConfig.isBypass()) {
+            return r;
+        }
+
+        List<PolicyResult> matchedPolicies = new ArrayList<>();
+
+        for (Map.Entry<String, PolicyConfig> entry : validationConfig.getPolicies().entrySet()) {
+            String policyKey = entry.getKey();
+            PolicyConfig policy = entry.getValue();
+
+            ExtractedContext extracted = extract(policy, r);
+
+            List<PolicyResult> results;
+
+            if (policy.getQuery() != null && !policy.getQuery().isBlank()) {
+                Map<String, Object> params = buildSqlParams(policy, extracted);
+                results = policyQueryExecutor.execute(policy.getQuery(), params);
+            } else {
+                results = evaluatePathOnly(policy, extracted);
+            }
+
+            for (PolicyResult pr : results) {
+                if (pr.getPolicyKey() == null || pr.getPolicyKey().isBlank()) {
+                    pr.setPolicyKey(policyKey);
+                }
+
+                if (pr.getJsonLogic() == null || pr.getJsonLogic().isBlank()) {
+                    matchedPolicies.add(pr);
+                } else {
+                    Map<String, Object> data = Map.of("payload", r.getPayload());
+                    if (jsonLogic.evaluate(pr.getJsonLogic(), data)) {
+                        matchedPolicies.add(pr);
+                    }
+                }
+            }
+        }
+
+        PolicyResult decision = aggregator.resolve(matchedPolicies, validationConfig.getCondition());
+
+        if (decision != null) {
+            applyDecision(decision, r);
+        }
+
+        return r;
+    }
+
+    private ExtractedContext extract(PolicyConfig policy, PipelineRecord record) throws Exception {
+        ExtractedContext ctx = new ExtractedContext();
+
+        if (policy.getExtractor() == null) {
+            return ctx;
+        }
+
+        for (Map.Entry<String, ExtractorConfig> e : policy.getExtractor().entrySet()) {
+            List<Object> vals = extractorResolver.extract(record, e.getValue());
+            ctx.put(e.getKey(), vals);
+        }
+
+        return ctx;
+    }
+
+    private Map<String, Object> buildSqlParams(PolicyConfig policy, ExtractedContext extracted) {
+        Map<String, Object> params = new LinkedHashMap<>();
+
+        if (policy.getParameterMapping() == null) {
+            return params;
+        }
+
+        for (Map.Entry<String, String> e : policy.getParameterMapping().entrySet()) {
+            String sqlParam = e.getKey();
+            String extractedKey = e.getValue();
+
+            List<Object> vals = extracted.getValues().getOrDefault(extractedKey, List.of());
+            params.put(sqlParam, vals);
+        }
+
+        return params;
+    }
+
+    private List<PolicyResult> evaluatePathOnly(PolicyConfig policy, ExtractedContext extracted) {
+        List<PolicyResult> list = new ArrayList<>();
+
+        if (policy.getConditionEvaluator() != null && policy.getConditionEvaluator().evaluate(extracted.getValues())) {
+            PolicyResult pr = new PolicyResult();
+            pr.setPriority(policy.getPriority());
+            pr.setAction(policy.getDefaultAction());
+            pr.setMaskIncludePaths(policy.getIncludePaths());
+            pr.setMaskExcludePaths(policy.getExcludePaths());
+            pr.setFullMaskExcludePaths(policy.getExcludePaths());
+            list.add(pr);
+        }
+
+        return list;
+    }
+
+    private void applyDecision(PolicyResult decision, PipelineRecord r) {
+        switch (decision.getAction()) {
+            case PASS:
+                return;
+
+            case FILTER:
+                r.setFiltered(true);
+                throw new RuntimeException(
+                        "Filtered by policy " + decision.getPolicyKey()
+                                + " priority=" + decision.getPriority()
+                );
+
+            case FULL_MASK: {
+                MaskOptions mo = new MaskOptions();
+                mo.setMode(MaskOptions.Mode.FULL);
+                mo.setJsonExclude(decision.getFullMaskExcludePaths());
+                mo.setXmlExclude(decision.getFullMaskExcludePaths());
+                maskEngine.apply(r, mo);
+                return;
+            }
+
+            case PARTIAL_MASK: {
+                MaskOptions mo = new MaskOptions();
+                mo.setMode(MaskOptions.Mode.PARTIAL);
+                mo.setJsonInclude(decision.getMaskIncludePaths());
+                mo.setXmlInclude(decision.getMaskIncludePaths());
+                mo.setJsonExclude(decision.getMaskExcludePaths());
+                mo.setXmlExclude(decision.getMaskExcludePaths());
+                maskEngine.apply(r, mo);
+            }
+        }
+    }
+}

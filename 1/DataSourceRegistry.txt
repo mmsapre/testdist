@@ -1,0 +1,22 @@
+package com.acme.graavl.config;
+
+import javax.sql.DataSource;
+import java.util.HashMap;
+import java.util.Map;
+
+public class DataSourceRegistry {
+
+    private final Map<String, DataSource> registry = new HashMap<>();
+
+    public void register(String name, DataSource dataSource) {
+        registry.put(name, dataSource);
+    }
+
+    public DataSource getRequired(String name) {
+        DataSource ds = registry.get(name);
+        if (ds == null) {
+            throw new IllegalStateException("No datasource registered: " + name);
+        }
+        return ds;
+    }
+}

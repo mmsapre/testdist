@@ -1,0 +1,74 @@
+package com.example.jsonlogic.ext.path;
+
+import com.example.jsonlogic.ext.model.PayloadContext;
+import com.example.jsonlogic.ext.model.PayloadType;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+public final class XmlPayloadResolver implements PathResolver {
+    private final XPathFactory xPathFactory = XPathFactory.newInstance();
+
+    @Override
+    public boolean supports(PayloadContext payloadContext, String path) {
+        if (payloadContext.getPayloadType() != PayloadType.XML || path == null || path.isBlank()) {
+            return false;
+        }
+        return path.startsWith("/") || path.startsWith("//") || path.startsWith("(");
+    }
+
+    @Override
+    public Object resolve(PayloadContext payloadContext, String path) {
+        try {
+            Document doc = parse(payloadContext.getRawPayload().toString());
+            XPath xpath = xPathFactory.newXPath();
+
+            Object scalar = xpath.evaluate(path, doc, XPathConstants.STRING);
+            NodeList nodes = (NodeList) xpath.evaluate(path, doc, XPathConstants.NODESET);
+
+            if (nodes == null || nodes.getLength() == 0) {
+                String s = scalar == null ? null : scalar.toString();
+                return (s == null || s.isBlank()) ? null : s;
+            }
+
+            if (nodes.getLength() == 1) {
+                return toText(nodes.item(0));
+            }
+
+            List<Object> values = new ArrayList<>();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                values.add(toText(nodes.item(i)));
+            }
+            return ResolverSupport.normalize(values);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String toText(Node node) {
+        if (node == null) {
+            return null;
+        }
+        String text = node.getTextContent();
+        return text == null ? null : text.trim();
+    }
+
+    private static Document parse(String xml) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        factory.setExpandEntityReferences(false);
+        return factory.newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+    }
+}

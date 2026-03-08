@@ -1,0 +1,58 @@
+package com.example.jsonlogic.ext.expression;
+
+import com.example.jsonlogic.ext.engine.ValueCoercions;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+
+import java.util.List;
+import java.util.Map;
+
+public final class SwitchExpression extends AbstractExpression {
+    @Override
+    public String key() {
+        return "switch";
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Object evaluate(JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+            throws JsonLogicEvaluationException {
+
+        requireArgCount(arguments, 1, key(), jsonPath);
+
+        Object configObj = eval(evaluator, arguments.get(0), data, jsonPath + "[0]");
+        if (!(configObj instanceof Map<?, ?> config)) {
+            throw new JsonLogicEvaluationException("switch expects one object argument", jsonPath);
+        }
+
+        Object switchValue = resolveValue(evaluator, config.get("value"), data, jsonPath + ".value");
+        Object casesObj = config.get("cases");
+        if (!(casesObj instanceof List<?> cases)) {
+            throw new JsonLogicEvaluationException("switch.cases must be an array", jsonPath + ".cases");
+        }
+
+        for (int i = 0; i < cases.size(); i++) {
+            Object caseObj = cases.get(i);
+            if (!(caseObj instanceof Map<?, ?> branch)) {
+                throw new JsonLogicEvaluationException("switch case must be an object", jsonPath + ".cases[" + i + "]");
+            }
+
+            Object match = resolveValue(evaluator, branch.get("match"), data, jsonPath + ".cases[" + i + "].match");
+            if (ValueCoercions.equalsLoose(switchValue, match)) {
+                return resolveValue(evaluator, branch.get("then"), data, jsonPath + ".cases[" + i + "].then");
+            }
+        }
+
+        return resolveValue(evaluator, config.get("default"), data, jsonPath + ".default");
+    }
+
+    private Object resolveValue(JsonLogicEvaluator evaluator, Object nodeOrValue, Object data, String path)
+            throws JsonLogicEvaluationException {
+        if (nodeOrValue instanceof JsonLogicNode node) {
+            return evaluator.evaluate(node, data, path);
+        }
+        return nodeOrValue;
+    }
+}

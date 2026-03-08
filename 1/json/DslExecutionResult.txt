@@ -1,0 +1,23 @@
+package com.example.jsonlogic.ext.dsl;
+
+import com.example.jsonlogic.ext.model.Decision;
+
+public final class DslExecutionResult {
+    private final boolean matched;
+    private final Decision onMatch;
+    private final Decision onNoMatch;
+
+    public DslExecutionResult(boolean matched, Decision onMatch, Decision onNoMatch) {
+        this.matched = matched;
+        this.onMatch = onMatch;
+        this.onNoMatch = onNoMatch;
+    }
+
+    public boolean isMatched() {
+        return matched;
+    }
+
+    public Decision toDecision() {
+        return matched ? onMatch : onNoMatch;
+    }
+}

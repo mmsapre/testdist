@@ -1,0 +1,11 @@
+package operator;
+
+import model.DecisionResult;
+
+public class ActionOperator {
+
+    public static DecisionResult action(String action){
+
+        return new DecisionResult(action,null);
+    }
+}

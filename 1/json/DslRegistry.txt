@@ -1,0 +1,8 @@
+package com.example.jsonlogic.ext.dsl;
+
+import java.util.Map;
+
+public interface DslRegistry {
+    String resolveQuery(String alias);
+    Map<String, String> resolveParameterPaths(String alias);
+}

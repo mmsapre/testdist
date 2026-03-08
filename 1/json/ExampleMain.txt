@@ -1,0 +1,179 @@
+package com.example.jsonlogic.ext;
+
+import com.example.jsonlogic.ext.dsl.DummyDslExecutor;
+import com.example.jsonlogic.ext.dsl.InMemoryDslRegistry;
+import com.example.jsonlogic.ext.engine.PolicyJsonLogicEngine;
+import com.example.jsonlogic.ext.model.EvaluationEnvelope;
+import com.example.jsonlogic.ext.model.PayloadContext;
+
+import java.util.Map;
+
+public class ExampleMain {
+    public static void main(String[] args) throws Exception {
+        InMemoryDslRegistry registry = new InMemoryDslRegistry(
+                Map.of(
+                        "ACCOUNT_BLOCKLIST_CHECK", "select 1 from blocklist where account_no = :accountNumber",
+                        "EU_SANCTION_CHECK", "select 1 from sanctions where region = :region"
+                ),
+                Map.of(
+                        "ACCOUNT_BLOCKLIST_CHECK", Map.of(
+                                "accountNumber", "$.Account.accountNumber"
+                        ),
+                        "EU_SANCTION_CHECK", Map.of(
+                                "region", "$.Account.region"
+                        )
+                )
+        );
+
+        PolicyJsonLogicEngine engine = new PolicyJsonLogicEngine(registry, new DummyDslExecutor());
+
+        String jsonPayload = """
+                {
+                  "Account": {
+                    "accountNumber": "9999999999",
+                    "balance": 250000,
+                    "region": "EU",
+                    "roles": [
+                      { "type": "Primary", "grid": "G001" },
+                      { "type": "Secondary", "grid": "G002" }
+                    ]
+                  }
+                }
+                """;
+
+        String caseRule = """
+                {
+                  "case": [
+                    {
+                      "when": {
+                        "and": [
+                          {
+                            "==": [
+                              { "var": "$.Account.accountNumber" },
+                              "9999999999"
+                            ]
+                          },
+                          {
+                            "or": [
+                              {
+                                "==": [
+                                  { "var": "$.Account.region" },
+                                  "EU"
+                                ]
+                              },
+                              {
+                                ">": [
+                                  { "var": "$.Account.balance" },
+                                  100000
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "then": { "dsl": [ "ACCOUNT_BLOCKLIST_CHECK" ] }
+                    },
+                    {
+                      "when": {
+                        "==": [
+                          { "var": "$.Account.region" },
+                          "US"
+                        ]
+                      },
+                      "then": "ALLOW"
+                    },
+                    {
+                      "else": "FILTER"
+                    }
+                  ]
+                }
+                """;
+
+        EvaluationEnvelope result1 = engine.evaluate(caseRule, PayloadContext.json(jsonPayload));
+        System.out.println("case result = " + result1.getValue());
+
+        String switchRule = """
+                {
+                  "switch": [
+                    {
+                      "value": { "var": "$.Account.region" },
+                      "cases": [
+                        { "match": "EU", "then": { "dsl": [ "EU_SANCTION_CHECK" ] } },
+                        { "match": "US", "then": "ALLOW" },
+                        { "match": "APAC", "then": "FILTER" }
+                      ],
+                      "default": "ALLOW"
+                    }
+                  ]
+                }
+                """;
+
+        EvaluationEnvelope result2 = engine.evaluate(switchRule, PayloadContext.json(jsonPayload));
+        System.out.println("switch result = " + result2.getValue());
+
+        String xmlPayload = """
+                <Account>
+                    <AccountNumber>9999999999</AccountNumber>
+                    <Region>EU</Region>
+                    <Balance>250000</Balance>
+                    <PartyRoles>
+                        <PartyRole>
+                            <RoleType>Primary</RoleType>
+                            <Grid>G001</Grid>
+                        </PartyRole>
+                        <PartyRole>
+                            <RoleType>Secondary</RoleType>
+                            <Grid>G002</Grid>
+                        </PartyRole>
+                    </PartyRoles>
+                </Account>
+                """;
+
+        String xmlRule = """
+                {
+                  "case": [
+                    {
+                      "when": {
+                        "and": [
+                          {
+                            "==": [
+                              { "var": "/Account/AccountNumber/text()" },
+                              "9999999999"
+                            ]
+                          },
+                          {
+                            "or": [
+                              {
+                                "in": [
+                                  "G001",
+                                  { "var": "/Account/PartyRoles/PartyRole/Grid/text()" }
+                                ]
+                              },
+                              {
+                                ">": [
+                                  { "var": "/Account/Balance/text()" },
+                                  100000
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "then": { "dsl": [ "ACCOUNT_BLOCKLIST_CHECK" ] }
+                    },
+                    {
+                      "else": "ALLOW"
+                    }
+                  ]
+                }
+                """;
+
+        EvaluationEnvelope result3 = engine.evaluate(
+                xmlRule,
+                PayloadContext.xml(xmlPayload, Map.of(
+                        "fallbackAccountNumber", "9999999999"
+                ))
+        );
+        System.out.println("xml case result = " + result3.getValue());
+    }
+}

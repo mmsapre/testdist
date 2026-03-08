@@ -1,0 +1,24 @@
+package engine;
+
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+import model.PayloadContext;
+import path.JsonPathResolver;
+import path.XPathResolver;
+
+public class ExtendedEvaluator extends JsonLogicEvaluator {
+
+    @Override
+    protected Object getVar(Object data,String key){
+
+        if(data instanceof PayloadContext ctx){
+
+            if(key.startsWith("$"))
+                return JsonPathResolver.resolve(ctx.getJson(),key);
+
+            if(key.startsWith("/"))
+                return XPathResolver.resolve(ctx.getXml(),key);
+        }
+
+        return super.getVar(data,key);
+    }
+}

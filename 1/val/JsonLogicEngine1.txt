@@ -1,0 +1,33 @@
+package com.acme.graavl.logic;
+
+import com.acme.graavl.core.PipelineRecord;
+
+import java.util.Map;
+
+public class JsonLogicEngine {
+
+    private Map<String, RuleOperator> operators;
+
+    public JsonLogicEngine(Map<String, RuleOperator> operators) {
+        this.operators = operators;
+    }
+
+    @SuppressWarnings("unchecked")
+    public Object evaluate(Object node,
+                           PipelineRecord record,
+                           RuleContext context) throws Exception {
+
+        if (node instanceof Map<?, ?> raw) {
+
+            Map<String, Object> map = (Map<String, Object>) raw;
+
+            String op = map.keySet().iterator().next();
+
+            RuleOperator operator = operators.get(op);
+
+            return operator.evaluate(map.get(op), record, context);
+        }
+
+        return node;
+    }
+}

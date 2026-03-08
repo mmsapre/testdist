@@ -1,0 +1,82 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.jayway.jsonpath.JsonPath;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.Map;
+
+public class DslQueryExecutor {
+
+    private Map<String, DataSource> dataSources;
+
+    private ValidationConfig validationConfig;
+
+    public Object execute(String key, PipelineRecord record) throws Exception {
+
+        DslQueryConfig cfg = validationConfig.getDslQueries().get(key);
+
+        String sql = buildSql(cfg);
+
+        DataSource ds = dataSources.get(cfg.getDatasource());
+
+        try (Connection conn = ds.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            int idx = 1;
+
+            for (WhereConfig w : cfg.getWhere()) {
+
+                Object v = JsonPath.read(record.getPayload(), w.getPath());
+
+                ps.setObject(idx++, v);
+            }
+
+            ResultSet rs = ps.executeQuery();
+
+            if (!rs.next())
+                return null;
+
+            return rs.getString("result");
+        }
+    }
+
+    private String buildSql(DslQueryConfig cfg) {
+
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT ");
+
+        for (int i = 0; i < cfg.getColumns().size(); i++) {
+
+            ColumnConfig c = cfg.getColumns().get(i);
+
+            if (i > 0) sql.append(",");
+
+            sql.append(c.getExpr()).append(" AS ").append(c.getAlias());
+        }
+
+        TableConfig t = cfg.getTables().get(0);
+
+        sql.append(" FROM ").append(t.getName())
+                .append(" ").append(t.getAlias());
+
+        sql.append(" WHERE ");
+
+        for (int i = 0; i < cfg.getWhere().size(); i++) {
+
+            WhereConfig w = cfg.getWhere().get(i);
+
+            if (i > 0) sql.append(" AND ");
+
+            sql.append(w.getColumn())
+                    .append(" ")
+                    .append(w.getOperator())
+                    .append(" ?");
+        }
+
+        return sql.toString();
+    }
+}

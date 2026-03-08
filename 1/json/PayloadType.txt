@@ -1,0 +1,7 @@
+package com.example.jsonlogic.ext.model;
+
+public enum PayloadType {
+    JSON,
+    XML,
+    MAP
+}

@@ -1,0 +1,24 @@
+package com.acme.graavl.core;
+
+public class PipelineRecord {
+
+    private String payload;
+
+    private String payloadType;
+
+    public String getPayload() {
+        return payload;
+    }
+
+    public String getPayloadType() {
+        return payloadType;
+    }
+
+    public void setPayload(String payload) {
+        this.payload = payload;
+    }
+
+    public void setPayloadType(String payloadType) {
+        this.payloadType = payloadType;
+    }
+}

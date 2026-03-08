@@ -1,0 +1,22 @@
+package com.example.jsonlogic.ext.expression;
+
+import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
+
+public abstract class AbstractExpression implements JsonLogicExpression {
+
+    protected Object eval(JsonLogicEvaluator evaluator, JsonLogicNode node, Object data, String jsonPath)
+            throws JsonLogicEvaluationException {
+        return evaluator.evaluate(node, data, jsonPath);
+    }
+
+    protected void requireArgCount(JsonLogicArray arguments, int min, String key, String jsonPath)
+            throws JsonLogicEvaluationException {
+        if (arguments.size() < min) {
+            throw new JsonLogicEvaluationException(key + " expects at least " + min + " arguments", jsonPath);
+        }
+    }
+}

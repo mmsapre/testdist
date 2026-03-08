@@ -1,0 +1,7 @@
+package com.example.jsonlogic.ext.dsl;
+
+import java.util.Map;
+
+public interface DslExecutor {
+    DslExecutionResult execute(String alias, String query, Map<String, Object> parameters);
+}

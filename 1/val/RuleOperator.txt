@@ -1,0 +1,10 @@
+package com.acme.graavl.logic;
+
+import com.acme.graavl.core.PipelineRecord;
+
+public interface RuleOperator {
+
+    Object evaluate(Object node,
+                    PipelineRecord record,
+                    RuleContext context) throws Exception;
+}

@@ -1,0 +1,42 @@
+package path;
+
+import javax.xml.parsers.*;
+import javax.xml.xpath.*;
+import org.w3c.dom.*;
+import java.io.*;
+
+public class XPathResolver {
+
+    public static Object resolve(String xml,String path){
+
+        try{
+
+            DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder=factory.newDocumentBuilder();
+
+            Document doc=builder.parse(
+                    new ByteArrayInputStream(xml.getBytes()));
+
+            XPath xpath=XPathFactory.newInstance().newXPath();
+
+            NodeList nodes=(NodeList)xpath.evaluate(
+                    path,doc,XPathConstants.NODESET);
+
+            if(nodes.getLength()==0)
+                return null;
+
+            if(nodes.getLength()==1)
+                return nodes.item(0).getTextContent();
+
+            java.util.List<String> values=new java.util.ArrayList<>();
+
+            for(int i=0;i<nodes.getLength();i++)
+                values.add(nodes.item(i).getTextContent());
+
+            return values;
+
+        }catch(Exception e){
+            return null;
+        }
+    }
+}

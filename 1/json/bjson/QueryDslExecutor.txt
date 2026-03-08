@@ -1,0 +1,79 @@
+package dsl;
+
+import model.PayloadContext;
+import path.JsonPathResolver;
+import path.XPathResolver;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.HashMap;
+import java.util.Map;
+
+public class QueryDslExecutor {
+
+    private final DataSource dataSource;
+
+    public QueryDslExecutor(DataSource dataSource){
+        this.dataSource = dataSource;
+    }
+
+    public String execute(String alias,
+                          PayloadContext payload) throws Exception {
+
+        String query = DslRegistry.getQuery(alias);
+
+        Map<String,String> paramPaths =
+                DslRegistry.getParams(alias);
+
+        Map<String,Object> params =
+                extractParams(payload,paramPaths);
+
+        return runQuery(query,params);
+    }
+
+    private Map<String,Object> extractParams(
+            PayloadContext payload,
+            Map<String,String> paramPaths){
+
+        Map<String,Object> params = new HashMap<>();
+
+        for(String key : paramPaths.keySet()){
+
+            String path = paramPaths.get(key);
+
+            Object value = null;
+
+            if(path.startsWith("$"))
+                value = JsonPathResolver.resolve(
+                        payload.getJson(),path);
+
+            if(path.startsWith("/"))
+                value = XPathResolver.resolve(
+                        payload.getXml(),path);
+
+            params.put(key,value);
+        }
+
+        return params;
+    }
+
+    private String runQuery(String query,
+                            Map<String,Object> params) throws Exception {
+
+        try(Connection conn = dataSource.getConnection()){
+
+            NamedParameterStatement stmt =
+                    new NamedParameterStatement(conn,query);
+
+            for(String key:params.keySet())
+                stmt.setObject(key,params.get(key));
+
+            ResultSet rs = stmt.executeQuery();
+
+            if(rs.next())
+                return rs.getString(1);
+
+            return "ALLOW";
+        }
+    }
+}

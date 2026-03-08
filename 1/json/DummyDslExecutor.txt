@@ -1,0 +1,23 @@
+package com.example.jsonlogic.ext.dsl;
+
+import com.example.jsonlogic.ext.model.Decision;
+
+import java.util.Map;
+
+public final class DummyDslExecutor implements DslExecutor {
+    @Override
+    public DslExecutionResult execute(String alias, String query, Map<String, Object> parameters) {
+        // Replace with JDBC / your ANTLR DSL / QueryDSL alias execution.
+        boolean matched = false;
+
+        if ("ACCOUNT_BLOCKLIST_CHECK".equals(alias)) {
+            matched = "9999999999".equals(String.valueOf(parameters.get("accountNumber")));
+        }
+
+        if ("EU_SANCTION_CHECK".equals(alias)) {
+            matched = "EU".equals(String.valueOf(parameters.get("region")));
+        }
+
+        return new DslExecutionResult(matched, Decision.MASK, Decision.ALLOW);
+    }
+}

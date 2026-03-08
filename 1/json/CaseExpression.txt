@@ -1,0 +1,58 @@
+package com.example.jsonlogic.ext.expression;
+
+import com.example.jsonlogic.ext.engine.Truthy;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+
+import java.util.Map;
+
+public final class CaseExpression extends AbstractExpression {
+    @Override
+    public String key() {
+        return "case";
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Object evaluate(JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+            throws JsonLogicEvaluationException {
+
+        for (int i = 0; i < arguments.size(); i++) {
+            Object branchRaw = eval(evaluator, arguments.get(i), data, jsonPath + "[" + i + "]");
+            if (!(branchRaw instanceof Map<?, ?> branch)) {
+                throw new JsonLogicEvaluationException("case branch must evaluate to an object", jsonPath + "[" + i + "]");
+            }
+
+            if (branch.containsKey("when")) {
+                Object whenNode = branch.get("when");
+                if (!(whenNode instanceof JsonLogicNode)) {
+                    Object ready = branch.get("then");
+                    if (Truthy.isTruthy(whenNode)) {
+                        return evaluateThen(evaluator, ready, data, jsonPath + "[" + i + "].then");
+                    }
+                } else {
+                    Object cond = evaluator.evaluate((JsonLogicNode) whenNode, data, jsonPath + "[" + i + "].when");
+                    if (Truthy.isTruthy(cond)) {
+                        return evaluateThen(evaluator, branch.get("then"), data, jsonPath + "[" + i + "].then");
+                    }
+                }
+            }
+
+            if (branch.containsKey("else")) {
+                return evaluateThen(evaluator, branch.get("else"), data, jsonPath + "[" + i + "].else");
+            }
+        }
+
+        return null;
+    }
+
+    private Object evaluateThen(JsonLogicEvaluator evaluator, Object thenNode, Object data, String jsonPath)
+            throws JsonLogicEvaluationException {
+        if (thenNode instanceof JsonLogicNode node) {
+            return evaluator.evaluate(node, data, jsonPath);
+        }
+        return thenNode;
+    }
+}

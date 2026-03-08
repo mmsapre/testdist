@@ -1,0 +1,12 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.config.PolicyConfig;
+import com.acme.graavl.core.PipelineRecord;
+
+public interface PolicyEvaluator {
+
+    boolean supports(PolicyConfig config);
+
+    Object evaluate(PolicyConfig config,
+                    PipelineRecord record) throws Exception;
+}

@@ -1,0 +1,46 @@
+package com.acme.graavl.config;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+public class ValidationConfig {
+
+    private boolean enabled;
+    private boolean bypass;
+
+    private Map<String, PolicyConfig> policies = new LinkedHashMap<>();
+
+    private Map<String, DslQueryConfig> dslQueries = new LinkedHashMap<>();
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public boolean isBypass() {
+        return bypass;
+    }
+
+    public Map<String, PolicyConfig> getPolicies() {
+        return policies;
+    }
+
+    public Map<String, DslQueryConfig> getDslQueries() {
+        return dslQueries;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public void setBypass(boolean bypass) {
+        this.bypass = bypass;
+    }
+
+    public void setPolicies(Map<String, PolicyConfig> policies) {
+        this.policies = policies;
+    }
+
+    public void setDslQueries(Map<String, DslQueryConfig> dslQueries) {
+        this.dslQueries = dslQueries;
+    }
+}

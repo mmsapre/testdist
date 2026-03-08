@@ -1,0 +1,11 @@
+package operator;
+
+import model.DecisionResult;
+
+public class ResultOperator {
+
+    public static DecisionResult result(String action,String dsl){
+
+        return new DecisionResult(action,dsl);
+    }
+}

@@ -1,0 +1,35 @@
+package com.example.jsonlogic.ext.engine;
+
+import java.lang.reflect.Array;
+import java.util.Collection;
+import java.util.Map;
+
+public final class Truthy {
+    private Truthy() {
+    }
+
+    public static boolean isTruthy(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        if (value instanceof Number n) {
+            return n.doubleValue() != 0.0d && !Double.isNaN(n.doubleValue());
+        }
+        if (value instanceof String s) {
+            return !s.isEmpty();
+        }
+        if (value instanceof Collection<?> c) {
+            return !c.isEmpty();
+        }
+        if (value instanceof Map<?, ?> m) {
+            return !m.isEmpty();
+        }
+        if (value.getClass().isArray()) {
+            return Array.getLength(value) > 0;
+        }
+        return true;
+    }
+}

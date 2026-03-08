@@ -1,0 +1,11 @@
+package operator;
+
+import model.DecisionResult;
+
+public class DslOperator {
+
+    public static DecisionResult invoke(String alias){
+
+        return new DecisionResult(null,alias);
+    }
+}

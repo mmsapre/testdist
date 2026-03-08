@@ -1,0 +1,33 @@
+package com.example.jsonlogic.ext.engine;
+
+import java.util.Collection;
+
+public final class ValueCoercions {
+    private ValueCoercions() {
+    }
+
+    public static boolean collectionContains(Collection<?> collection, Object expected) {
+        if (collection == null) {
+            return false;
+        }
+        for (Object item : collection) {
+            if (equalsLoose(item, expected)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean equalsLoose(Object left, Object right) {
+        if (left == right) {
+            return true;
+        }
+        if (left == null || right == null) {
+            return false;
+        }
+        if (left instanceof Number l && right instanceof Number r) {
+            return Double.compare(l.doubleValue(), r.doubleValue()) == 0;
+        }
+        return String.valueOf(left).equals(String.valueOf(right));
+    }
+}

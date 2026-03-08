@@ -1,0 +1,25 @@
+package operator;
+
+import java.util.*;
+
+public class CaseOperator {
+
+    public static Object evaluate(List<Map<String,Object>> branches){
+
+        for(Map<String,Object> b : branches){
+
+            if(b.containsKey("when")){
+
+                Boolean cond=(Boolean)b.get("when");
+
+                if(cond)
+                    return b.get("then");
+            }
+
+            if(b.containsKey("else"))
+                return b.get("else");
+        }
+
+        return null;
+    }
+}

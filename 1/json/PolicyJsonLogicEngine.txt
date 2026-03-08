@@ -1,0 +1,94 @@
+package com.example.jsonlogic.ext.engine;
+
+import com.example.jsonlogic.ext.dsl.DslExecutionResult;
+import com.example.jsonlogic.ext.dsl.DslExecutor;
+import com.example.jsonlogic.ext.dsl.DslRegistry;
+import com.example.jsonlogic.ext.expression.CaseExpression;
+import com.example.jsonlogic.ext.expression.DslExpression;
+import com.example.jsonlogic.ext.expression.SwitchExpression;
+import com.example.jsonlogic.ext.model.DslInvocation;
+import com.example.jsonlogic.ext.model.EvaluationEnvelope;
+import com.example.jsonlogic.ext.model.PayloadContext;
+import com.example.jsonlogic.ext.path.JsonPayloadResolver;
+import com.example.jsonlogic.ext.path.PathResolver;
+import com.example.jsonlogic.ext.path.XmlPayloadResolver;
+import io.github.jamsesso.jsonlogic.JsonLogic;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
+import io.github.jamsesso.jsonlogic.parser.JsonLogicParser;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public final class PolicyJsonLogicEngine {
+    private final Map<String, JsonLogicExpression> expressions = new HashMap<>();
+    private final PathAwareJsonLogicEvaluator evaluator;
+    private final JsonLogicParser parser = new JsonLogicParser();
+    private final List<PathResolver> resolvers = List.of(
+            new JsonPayloadResolver(),
+            new XmlPayloadResolver()
+    );
+    private final DslRegistry dslRegistry;
+    private final DslExecutor dslExecutor;
+
+    public PolicyJsonLogicEngine(DslRegistry dslRegistry, DslExecutor dslExecutor) {
+        this.dslRegistry = dslRegistry;
+        this.dslExecutor = dslExecutor;
+
+        JsonLogic base = new JsonLogic();
+        base.getExpressions().forEach((k, v) -> expressions.put(k, v));
+
+        register(new DslExpression());
+        register(new CaseExpression());
+        register(new SwitchExpression());
+
+        this.evaluator = new PathAwareJsonLogicEvaluator(expressions);
+    }
+
+    public void register(JsonLogicExpression expression) {
+        expressions.put(expression.key(), expression);
+    }
+
+    public EvaluationEnvelope evaluate(String expressionJson, PayloadContext payloadContext) throws Exception {
+        JsonLogicNode node = parser.parse(expressionJson);
+        Object result = evaluator.evaluate(node, payloadContext, "$");
+
+        if (result instanceof DslInvocation dslInvocation) {
+            Map<String, Object> params = resolveDslParameters(dslInvocation.getAlias(), payloadContext);
+            String query = dslRegistry.resolveQuery(dslInvocation.getAlias());
+            DslExecutionResult dslResult = dslExecutor.execute(dslInvocation.getAlias(), query, params);
+            return new EvaluationEnvelope(dslResult.toDecision());
+        }
+
+        return new EvaluationEnvelope(result);
+    }
+
+    private Map<String, Object> resolveDslParameters(String alias, PayloadContext payloadContext) {
+        Map<String, String> mappings = dslRegistry.resolveParameterPaths(alias);
+        Map<String, Object> params = new HashMap<>();
+
+        if (mappings == null) {
+            return params;
+        }
+
+        for (Map.Entry<String, String> e : mappings.entrySet()) {
+            Object value = resolvePath(payloadContext, e.getValue());
+            params.put(e.getKey(), value);
+        }
+
+        return params;
+    }
+
+    private Object resolvePath(PayloadContext payloadContext, String path) {
+        for (PathResolver resolver : resolvers) {
+            if (resolver.supports(payloadContext, path)) {
+                Object value = resolver.resolve(payloadContext, path);
+                if (value != null) {
+                    return value;
+                }
+            }
+        }
+        return payloadContext.getVariables().get(path);
+    }
+}

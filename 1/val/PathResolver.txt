@@ -1,0 +1,16 @@
+package com.acme.graavl.extract;
+
+import com.acme.graavl.core.PipelineRecord;
+import com.jayway.jsonpath.JsonPath;
+
+public class PathResolver {
+
+    public Object resolve(String expr, PipelineRecord record) {
+
+        if (expr.startsWith("$")) {
+            return JsonPath.read(record.getPayload(), expr);
+        }
+
+        return null;
+    }
+}

@@ -1,0 +1,24 @@
+package com.example.jsonlogic.ext.expression;
+
+import com.example.jsonlogic.ext.model.DslInvocation;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+
+public final class DslExpression extends AbstractExpression {
+    @Override
+    public String key() {
+        return "dsl";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+            throws JsonLogicEvaluationException {
+        requireArgCount(arguments, 1, key(), jsonPath);
+        Object alias = eval(evaluator, arguments.get(0), data, jsonPath + "[0]");
+        if (alias == null || String.valueOf(alias).isBlank()) {
+            throw new JsonLogicEvaluationException("dsl alias must not be blank", jsonPath);
+        }
+        return new DslInvocation(String.valueOf(alias));
+    }
+}

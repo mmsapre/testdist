@@ -1,0 +1,20 @@
+package model;
+
+public class DecisionResult {
+
+    private String action;
+    private String dsl;
+
+    public DecisionResult(String action,String dsl){
+        this.action=action;
+        this.dsl=dsl;
+    }
+
+    public String getAction(){
+        return action;
+    }
+
+    public String getDsl(){
+        return dsl;
+    }
+}

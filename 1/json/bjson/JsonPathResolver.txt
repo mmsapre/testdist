@@ -1,0 +1,27 @@
+package path;
+
+import com.jayway.jsonpath.JsonPath;
+
+public class JsonPathResolver {
+
+    public static Object resolve(String json,String path){
+
+        try{
+
+            Object value=JsonPath.read(json,path);
+
+            if(value instanceof java.util.List list){
+
+                if(list.size()==1)
+                    return list.get(0);
+
+                return list;
+            }
+
+            return value;
+
+        }catch(Exception e){
+            return null;
+        }
+    }
+}

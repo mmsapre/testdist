@@ -1,0 +1,57 @@
+package com.example.jsonlogic.ext.path;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+public final class ResolverSupport {
+    private ResolverSupport() {
+    }
+
+    public static Object normalize(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof List<?> list) {
+            if (list.isEmpty()) {
+                return null;
+            }
+            if (list.size() == 1) {
+                return normalize(list.get(0));
+            }
+            List<Object> normalized = new ArrayList<>(list.size());
+            for (Object item : list) {
+                normalized.add(normalize(item));
+            }
+            return normalized;
+        }
+        if (value instanceof Collection<?> collection) {
+            return new ArrayList<>(collection);
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return value;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Object resolveSimpleMapPath(Map<String, Object> map, String path) {
+        if (path == null || path.isBlank()) {
+            return map;
+        }
+        String[] parts = path.split("\\.");
+        Object current = map;
+        for (String part : parts) {
+            if (current instanceof Map<?, ?> currMap) {
+                current = ((Map<String, Object>) currMap).get(part);
+            } else if (current instanceof List<?> list) {
+                int index = Integer.parseInt(part);
+                current = list.get(index);
+            } else {
+                return null;
+            }
+        }
+        return normalize(current);
+    }
+}

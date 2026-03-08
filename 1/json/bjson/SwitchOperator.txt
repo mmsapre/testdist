@@ -1,0 +1,16 @@
+package operator;
+
+import java.util.Map;
+
+public class SwitchOperator {
+
+    public static Object evaluate(Object value,
+                                  Map<Object,Object> cases,
+                                  Object defaultVal){
+
+        if(cases.containsKey(value))
+            return cases.get(value);
+
+        return defaultVal;
+    }
+}

@@ -1,0 +1,34 @@
+package com.example.jsonlogic.ext.model;
+
+public final class EvaluationEnvelope {
+    private final Object value;
+
+    public EvaluationEnvelope(Object value) {
+        this.value = value;
+    }
+
+    public Object getValue() {
+        return value;
+    }
+
+    public boolean isDslInvocation() {
+        return value instanceof DslInvocation;
+    }
+
+    public DslInvocation asDslInvocation() {
+        return (DslInvocation) value;
+    }
+
+    public boolean isDecision() {
+        return value instanceof Decision;
+    }
+
+    public Decision asDecision() {
+        return (Decision) value;
+    }
+
+    @Override
+    public String toString() {
+        return "EvaluationEnvelope{value=" + value + "}";
+    }
+}

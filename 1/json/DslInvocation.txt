@@ -1,0 +1,32 @@
+package com.example.jsonlogic.ext.model;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+
+public final class DslInvocation {
+    private final String alias;
+    private final Map<String, Object> metadata;
+
+    public DslInvocation(String alias) {
+        this(alias, Collections.emptyMap());
+    }
+
+    public DslInvocation(String alias, Map<String, Object> metadata) {
+        this.alias = Objects.requireNonNull(alias, "alias");
+        this.metadata = metadata == null ? Collections.emptyMap() : Collections.unmodifiableMap(metadata);
+    }
+
+    public String getAlias() {
+        return alias;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    @Override
+    public String toString() {
+        return "DslInvocation{alias='" + alias + "', metadata=" + metadata + "}";
+    }
+}

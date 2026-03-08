@@ -1,0 +1,42 @@
+import engine.PolicyEngine;
+import model.PayloadContext;
+import dsl.QueryDslExecutor;
+
+import javax.sql.DataSource;
+
+public class ExampleMain {
+
+    public static void main(String[] args) throws Exception{
+
+        String jsonPayload = """
+        {
+          "Account":{
+             "accountNumber":"9999999999",
+             "balance":250000
+          }
+        }
+        """;
+
+        String xmlPayload = """
+        <Account>
+           <AccountNumber>9999999999</AccountNumber>
+        </Account>
+        """;
+
+        PayloadContext payload =
+                new PayloadContext(jsonPayload,xmlPayload);
+
+        DataSource ds = createDataSource();
+
+        QueryDslExecutor executor =
+                new QueryDslExecutor(ds);
+
+        PolicyEngine engine =
+                new PolicyEngine(executor);
+
+        String result =
+                engine.evaluate(rule,payload);
+
+        System.out.println("Decision = " + result);
+    }
+}

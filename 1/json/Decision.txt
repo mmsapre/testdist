@@ -1,0 +1,8 @@
+package com.example.jsonlogic.ext.model;
+
+public enum Decision {
+    ALLOW,
+    MASK,
+    FILTER,
+    BLOCK
+}

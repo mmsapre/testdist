@@ -1,0 +1,14 @@
+package model;
+
+public class DslInvocation {
+
+    private final String alias;
+
+    public DslInvocation(String alias){
+        this.alias=alias;
+    }
+
+    public String getAlias(){
+        return alias;
+    }
+}

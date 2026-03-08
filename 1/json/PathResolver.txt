@@ -1,0 +1,8 @@
+package com.example.jsonlogic.ext.path;
+
+import com.example.jsonlogic.ext.model.PayloadContext;
+
+public interface PathResolver {
+    boolean supports(PayloadContext payloadContext, String path);
+    Object resolve(PayloadContext payloadContext, String path);
+}

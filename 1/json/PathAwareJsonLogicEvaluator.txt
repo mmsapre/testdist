@@ -1,0 +1,95 @@
+package com.example.jsonlogic.ext.engine;
+
+import com.example.jsonlogic.ext.model.PayloadContext;
+import com.example.jsonlogic.ext.model.PayloadType;
+import com.example.jsonlogic.ext.path.JsonPayloadResolver;
+import com.example.jsonlogic.ext.path.PathResolver;
+import com.example.jsonlogic.ext.path.ResolverSupport;
+import com.example.jsonlogic.ext.path.XmlPayloadResolver;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicVariable;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+public class PathAwareJsonLogicEvaluator extends JsonLogicEvaluator {
+    private final List<PathResolver> resolvers = List.of(
+            new JsonPayloadResolver(),
+            new XmlPayloadResolver()
+    );
+
+    public PathAwareJsonLogicEvaluator(Map<String, JsonLogicExpression> expressions) {
+        super(expressions);
+    }
+
+    @Override
+    public Object evaluate(JsonLogicVariable variable, Object data, String jsonPath)
+            throws JsonLogicEvaluationException {
+
+        Object defaultValue = evaluate(variable.getDefaultValue(), null, jsonPath + "[1]");
+
+        if (data == null) {
+            return defaultValue;
+        }
+
+        Object key = evaluate(variable.getKey(), data, jsonPath + "[0]");
+        if (key == null) {
+            return defaultValue;
+        }
+
+        if (!(key instanceof String name)) {
+            return super.evaluate(variable, data, jsonPath);
+        }
+
+        // Fallback path list support:
+        // { "var": ["$.a.b", "/Root/A/B", "simple.path", "accountNumber"] }
+        if (key.startsWith("[") && key.endsWith("]")) {
+            return defaultValue;
+        }
+
+        Object resolved = resolveVariable(name, data);
+        return resolved != null ? resolved : defaultValue;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object resolveVariable(String name, Object data) {
+        if (data instanceof PayloadContext ctx) {
+            for (String candidate : splitCandidates(name)) {
+                for (PathResolver resolver : resolvers) {
+                    if (resolver.supports(ctx, candidate)) {
+                        Object value = resolver.resolve(ctx, candidate);
+                        if (value != null) {
+                            return value;
+                        }
+                    }
+                }
+
+                if (ctx.getVariables() != null) {
+                    Object value = ResolverSupport.resolveSimpleMapPath(ctx.getVariables(), candidate);
+                    if (value != null) {
+                        return value;
+                    }
+                }
+            }
+            return null;
+        }
+
+        if (data instanceof Map<?, ?> map) {
+            return ResolverSupport.resolveSimpleMapPath((Map<String, Object>) map, name);
+        }
+
+        return null;
+    }
+
+    private List<String> splitCandidates(String name) {
+        // support fallback syntax: "$.a|/Root/A|account.id"
+        String[] parts = name.split("\\|");
+        return java.util.Arrays.stream(parts)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+}

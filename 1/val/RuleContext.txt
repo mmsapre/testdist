@@ -1,0 +1,16 @@
+package com.acme.graavl.logic;
+
+import com.acme.graavl.dsl.DslQueryExecutor;
+
+public class RuleContext {
+
+    private DslQueryExecutor dslExecutor;
+
+    public DslQueryExecutor getDslExecutor() {
+        return dslExecutor;
+    }
+
+    public void setDslExecutor(DslQueryExecutor dslExecutor) {
+        this.dslExecutor = dslExecutor;
+    }
+}

@@ -1,0 +1,47 @@
+package com.example.jsonlogic.ext.model;
+
+import java.util.Map;
+
+public final class PayloadContext {
+    private final PayloadType payloadType;
+    private final Object rawPayload;
+    private final Map<String, Object> variables;
+
+    public PayloadContext(PayloadType payloadType, Object rawPayload, Map<String, Object> variables) {
+        this.payloadType = payloadType;
+        this.rawPayload = rawPayload;
+        this.variables = variables;
+    }
+
+    public static PayloadContext json(String json) {
+        return new PayloadContext(PayloadType.JSON, json, Map.of());
+    }
+
+    public static PayloadContext xml(String xml) {
+        return new PayloadContext(PayloadType.XML, xml, Map.of());
+    }
+
+    public static PayloadContext map(Map<String, Object> map) {
+        return new PayloadContext(PayloadType.MAP, map, map);
+    }
+
+    public static PayloadContext json(String json, Map<String, Object> vars) {
+        return new PayloadContext(PayloadType.JSON, json, vars);
+    }
+
+    public static PayloadContext xml(String xml, Map<String, Object> vars) {
+        return new PayloadContext(PayloadType.XML, xml, vars);
+    }
+
+    public PayloadType getPayloadType() {
+        return payloadType;
+    }
+
+    public Object getRawPayload() {
+        return rawPayload;
+    }
+
+    public Map<String, Object> getVariables() {
+        return variables;
+    }
+}

@@ -1,0 +1,46 @@
+package com.acme.graavl.config;
+
+import java.util.List;
+
+public class DslQueryConfig {
+
+    private String datasource;
+
+    private List<TableConfig> tables;
+
+    private List<ColumnConfig> columns;
+
+    private List<WhereConfig> where;
+
+    public String getDatasource() {
+        return datasource;
+    }
+
+    public List<TableConfig> getTables() {
+        return tables;
+    }
+
+    public List<ColumnConfig> getColumns() {
+        return columns;
+    }
+
+    public List<WhereConfig> getWhere() {
+        return where;
+    }
+
+    public void setDatasource(String datasource) {
+        this.datasource = datasource;
+    }
+
+    public void setTables(List<TableConfig> tables) {
+        this.tables = tables;
+    }
+
+    public void setColumns(List<ColumnConfig> columns) {
+        this.columns = columns;
+    }
+
+    public void setWhere(List<WhereConfig> where) {
+        this.where = where;
+    }
+}

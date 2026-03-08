@@ -1,0 +1,14 @@
+package com.acme.graavl.config;
+
+public class DistributionConfig {
+
+    private ValidationConfig validation;
+
+    public ValidationConfig getValidation() {
+        return validation;
+    }
+
+    public void setValidation(ValidationConfig validation) {
+        this.validation = validation;
+    }
+}

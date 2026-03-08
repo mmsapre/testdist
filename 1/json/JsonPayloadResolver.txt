@@ -1,0 +1,28 @@
+package com.example.jsonlogic.ext.path;
+
+import com.example.jsonlogic.ext.model.PayloadContext;
+import com.example.jsonlogic.ext.model.PayloadType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.JsonPath;
+
+public final class JsonPayloadResolver implements PathResolver {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Configuration CONFIG = Configuration.defaultConfiguration();
+
+    @Override
+    public boolean supports(PayloadContext payloadContext, String path) {
+        return payloadContext.getPayloadType() == PayloadType.JSON && path != null && path.startsWith("$");
+    }
+
+    @Override
+    public Object resolve(PayloadContext payloadContext, String path) {
+        try {
+            Object document = CONFIG.jsonProvider().parse(payloadContext.getRawPayload().toString());
+            Object value = JsonPath.read(document, path);
+            return ResolverSupport.normalize(value);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}

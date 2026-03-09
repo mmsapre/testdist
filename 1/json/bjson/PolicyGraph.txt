@@ -1,0 +1,17 @@
+package com.acme.graavl.graph;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class PolicyGraph {
+
+    private List<PolicyNode> roots = new ArrayList<>();
+
+    public List<PolicyNode> getRoots() {
+        return roots;
+    }
+
+    public void addRoot(PolicyNode node) {
+        roots.add(node);
+    }
+}

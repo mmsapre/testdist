@@ -1,0 +1,84 @@
+package engine;
+
+import com.brunocesar.jsonlogic.JsonLogic;
+
+import expressions.*;
+import mask.MaskPathIndex;
+import dsl.QueryDslExecutor;
+import action.*;
+
+public class PolicyEngine {
+
+    private JsonLogic jsonLogic;
+
+    private ActionRegistry actionRegistry;
+
+    public PolicyEngine(QueryDslExecutor dslExecutor,
+                        MaskPathIndex maskIndex) {
+
+        jsonLogic = new JsonLogic();
+
+        actionRegistry = new ActionRegistry();
+
+        jsonLogic.addOperation("switch",
+                new SwitchExpression());
+
+        jsonLogic.addOperation("action",
+                new ActionExpression());
+
+        jsonLogic.addOperation("var_jsonpath",
+                new JsonPathVarExpression());
+
+        jsonLogic.addOperation("var_xpath",
+                new XPathVarExpression());
+
+        jsonLogic.addOperation("dsl",
+                new DslExpression(dslExecutor));
+
+        jsonLogic.addOperation("mask_include",
+                new MaskIncludeExpression(maskIndex));
+
+        jsonLogic.addOperation("mask_exclude",
+                new MaskExcludeExpression(maskIndex));
+
+        jsonLogic.addOperation("override",
+                new OverrideExpression());
+
+        jsonLogic.addOperation("enrich",
+                new EnrichExpression(dslExecutor));
+
+        jsonLogic.addOperation("pass",
+                new PassExpression());
+
+        jsonLogic.addOperation("filter",
+                new FilterExpression());
+
+        actionRegistry.register(
+                new PassProcessor());
+
+        actionRegistry.register(
+                new FilterProcessor());
+
+        actionRegistry.register(
+                new MaskIncludeProcessor(maskIndex));
+    }
+
+    public Object evaluate(Object rule,
+                           model.PayloadContext payload)
+            throws Exception {
+
+        Object action =
+                jsonLogic.apply(rule,payload);
+
+        if(action==null)
+            return null;
+
+        ActionProcessor processor =
+                actionRegistry.get(action.toString());
+
+        if(processor==null)
+            return payload;
+
+        return processor.process(payload);
+    }
+}

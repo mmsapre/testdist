@@ -1,0 +1,56 @@
+package engine;
+
+import com.brunocesar.jsonlogic.JsonLogic;
+import dsl.QueryDslExecutor;
+import model.PayloadContext;
+
+import java.util.Map;
+
+public class PolicyEngine {
+
+    private JsonLogic logic = new JsonLogic();
+
+    private QueryDslExecutor executor;
+
+    private ActionProcessorRegistry registry;
+
+    public PolicyEngine(QueryDslExecutor executor,
+                        ActionProcessorRegistry registry){
+
+        this.executor=executor;
+        this.registry=registry;
+    }
+
+    public PayloadContext evaluate(
+            Map<String,Object> rule,
+            PayloadContext payload) throws Exception {
+
+        Object result =
+                logic.apply(rule,payload);
+
+        String action;
+
+        if(result instanceof Map map &&
+           map.containsKey("dsl")){
+
+            String alias=(String)map.get("dsl");
+
+            action=executor.execute(alias,payload);
+
+        } else {
+
+            action=(String)((Map)result).get("action");
+        }
+
+        Map<String,Object> actions =
+                (Map<String,Object>)rule.get("actions");
+
+        Map<String,Object> actionRule =
+                (Map<String,Object>)actions.get(action);
+
+        ActionProcessor processor =
+                registry.get(action);
+
+        return processor.process(payload,actionRule);
+    }
+}

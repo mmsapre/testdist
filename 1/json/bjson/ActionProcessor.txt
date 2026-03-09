@@ -1,0 +1,13 @@
+package engine;
+
+import model.PayloadContext;
+import model.ActionResult;
+
+public interface ActionProcessor {
+
+    PayloadContext process(
+            PayloadContext payload,
+            ActionResult result
+    ) throws Exception;
+
+}

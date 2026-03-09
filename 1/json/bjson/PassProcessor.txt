@@ -1,0 +1,13 @@
+package processors;
+
+import engine.ActionProcessor;
+import model.*;
+
+public class PassProcessor implements ActionProcessor {
+
+    public PayloadContext process(PayloadContext payload,
+                                  ActionResult result){
+
+        return payload;
+    }
+}

@@ -1,0 +1,37 @@
+package processors;
+
+import engine.ActionProcessor;
+import model.*;
+import dsl.QueryDslExecutor;
+
+import java.util.Map;
+
+public class EnrichProcessor implements ActionProcessor {
+
+    private QueryDslExecutor executor;
+
+    public EnrichProcessor(QueryDslExecutor executor){
+        this.executor = executor;
+    }
+
+    public PayloadContext process(PayloadContext payload,
+                                  ActionResult result) throws Exception {
+
+        String alias = (String)
+                result.getParameters().get("alias");
+
+        Map<String,Object> enrich =
+                executor.lookup(alias,payload);
+
+        String json = payload.getJson();
+
+        for(String k:enrich.keySet())
+            json=json.replace(
+                    "\""+k+"\":null",
+                    "\""+k+"\":\""+enrich.get(k)+"\"");
+
+        payload.setJson(json);
+
+        return payload;
+    }
+}

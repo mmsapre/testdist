@@ -1,0 +1,42 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import java.util.Objects;
+import java.util.List;
+
+public class SwitchExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "switch";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) throws Exception {
+
+        Object value = args.get(0).evaluate(evaluator,data,path);
+
+        int i = 1;
+
+        while (i < args.size() - 1) {
+
+            Object caseVal = args.get(i)
+                    .evaluate(evaluator,data,path);
+
+            if (Objects.equals(value, caseVal)) {
+
+                return args.get(i + 1)
+                        .evaluate(evaluator,data,path);
+            }
+
+            i += 2;
+        }
+
+        return args.get(args.size() - 1)
+                .evaluate(evaluator,data,path);
+    }
+}

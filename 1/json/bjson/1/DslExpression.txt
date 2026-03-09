@@ -1,0 +1,32 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import dsl.QueryDslExecutor;
+
+import java.util.List;
+
+public class DslExpression implements JsonLogicExpression {
+
+    private QueryDslExecutor executor;
+
+    public DslExpression(QueryDslExecutor executor){
+        this.executor = executor;
+    }
+
+    @Override
+    public String key() {
+        return "dsl";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) throws Exception {
+
+        String alias = args.get(0).toString();
+
+        return executor.execute(alias,data);
+    }
+}

@@ -1,0 +1,18 @@
+package com.acme.graavl.logic.operator;
+
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.dsl.DslQueryExecutor;
+import com.acme.graavl.logic.*;
+
+public class DslOperator implements RuleOperator {
+
+    @Override
+    public Object evaluate(Object node,
+                           PipelineRecord record,
+                           RuleContext context) throws Exception {
+
+        String key = node.toString();
+
+        return context.getDslExecutor().execute(key, record);
+    }
+}

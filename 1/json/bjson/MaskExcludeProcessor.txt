@@ -1,0 +1,41 @@
+package actions;
+
+import engine.ActionProcessor;
+import mask.MaskPathIndex;
+import model.PayloadContext;
+
+import com.jayway.jsonpath.*;
+
+import java.util.*;
+
+public class MaskExcludeProcessor implements ActionProcessor {
+
+    private MaskPathIndex index;
+
+    public MaskExcludeProcessor(MaskPathIndex index){
+        this.index=index;
+    }
+
+    @Override
+    public PayloadContext process(
+            PayloadContext payload,
+            Map<String,Object> rule){
+
+        List<JsonPath> exclude =
+                index.getExclude("MASK_EXCLUDE");
+
+        DocumentContext ctx =
+                JsonPath.parse(payload.getJson());
+
+        ctx.set("$","****");
+
+        for(JsonPath p:exclude)
+            ctx.set(p.getPath(),
+                    JsonPath.read(payload.getJson(),
+                    p.getPath()));
+
+        payload.setJson(ctx.jsonString());
+
+        return payload;
+    }
+}

@@ -1,0 +1,34 @@
+package com.acme.graavl.config;
+
+public class WhereConfig {
+
+    private String column;
+
+    private String operator;
+
+    private String path;
+
+    public String getColumn() {
+        return column;
+    }
+
+    public String getOperator() {
+        return operator;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setColumn(String column) {
+        this.column = column;
+    }
+
+    public void setOperator(String operator) {
+        this.operator = operator;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
+    }
+}

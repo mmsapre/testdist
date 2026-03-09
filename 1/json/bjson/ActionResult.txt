@@ -1,0 +1,21 @@
+package model;
+
+import java.util.Map;
+
+public class ActionResult {
+
+    private String action;
+    private Map<String,Object> parameters;
+
+    public ActionResult(String action,
+                        Map<String,Object> parameters) {
+        this.action = action;
+        this.parameters = parameters;
+    }
+
+    public String getAction(){ return action; }
+
+    public Map<String,Object> getParameters(){
+        return parameters;
+    }
+}

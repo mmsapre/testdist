@@ -1,0 +1,18 @@
+package action;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class ActionRegistry {
+
+    private Map<String,ActionProcessor> processors =
+            new HashMap<>();
+
+    public void register(ActionProcessor processor){
+        processors.put(processor.action(),processor);
+    }
+
+    public ActionProcessor get(String action){
+        return processors.get(action);
+    }
+}

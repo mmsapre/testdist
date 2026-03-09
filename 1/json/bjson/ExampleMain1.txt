@@ -1,0 +1,39 @@
+MaskPathIndex index = new MaskPathIndex();
+
+index.registerInclude(
+        "PARTIAL_MASK",
+        List.of(
+          "$.Account.accountNumber",
+          "$.Account.iban"
+        ));
+
+index.registerExclude(
+        "MASK_EXCLUDE",
+        List.of("$.Account.accountId"));
+
+ActionProcessorRegistry registry =
+        new ActionProcessorRegistry();
+
+registry.register("PARTIAL_MASK",
+        new PartialMaskProcessor(index));
+
+registry.register("MASK_EXCLUDE",
+        new MaskExcludeProcessor(index));
+
+registry.register("OVERRIDE",
+        new OverrideProcessor());
+
+registry.register("ENRICH",
+        new EnrichProcessor(dslExecutor));
+
+registry.register("PASS",
+        new PassProcessor());
+
+PolicyEngine engine =
+        new PolicyEngine(dslExecutor,registry);
+
+PayloadContext payload =
+        new PayloadContext(json,null);
+
+PayloadContext result =
+        engine.evaluate(rule,payload);

@@ -1,0 +1,69 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+
+public class DslSqlBuilder {
+
+    public String build(DslQueryConfig cfg) {
+
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT ");
+
+        for (int i = 0; i < cfg.getColumns().size(); i++) {
+
+            ColumnConfig c = cfg.getColumns().get(i);
+
+            if (i > 0) sql.append(",");
+
+            sql.append(c.getExpr())
+               .append(" AS ")
+               .append(c.getAlias());
+        }
+
+        TableConfig t = cfg.getTables().get(0);
+
+        sql.append(" FROM ")
+           .append(t.getName())
+           .append(" ")
+           .append(t.getAlias());
+
+        if (cfg.getJoins() != null) {
+
+            for (JoinConfig j : cfg.getJoins()) {
+
+                sql.append(" ")
+                   .append(j.getType())
+                   .append(" JOIN ")
+                   .append(j.getTable())
+                   .append(" ")
+                   .append(j.getAlias())
+                   .append(" ON ")
+                   .append(j.getLeft())
+                   .append(" ")
+                   .append(j.getOperator())
+                   .append(" ")
+                   .append(j.getRight());
+            }
+        }
+
+        if (cfg.getWhere() != null) {
+
+            sql.append(" WHERE ");
+
+            for (int i = 0; i < cfg.getWhere().size(); i++) {
+
+                WhereConfig w = cfg.getWhere().get(i);
+
+                if (i > 0) sql.append(" AND ");
+
+                sql.append(w.getColumn())
+                   .append(" ")
+                   .append(w.getOperator())
+                   .append(" ?");
+            }
+        }
+
+        return sql.toString();
+    }
+}

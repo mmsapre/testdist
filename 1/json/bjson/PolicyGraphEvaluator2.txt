@@ -1,0 +1,54 @@
+package com.acme.graavl.graph;
+
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.policy.PolicyResult;
+import com.acme.graavl.validation.PolicyEvaluator;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class PolicyGraphEvaluator {
+
+    private List<PolicyEvaluator> evaluators;
+
+    public List<PolicyResult> evaluate(PolicyGraph graph,
+                                       PipelineRecord record) throws Exception {
+
+        List<PolicyResult> results = new ArrayList<>();
+
+        for (PolicyNode node : graph.getRoots()) {
+
+            evaluateNode(node, record, results);
+        }
+
+        return results;
+    }
+
+    private void evaluateNode(PolicyNode node,
+                              PipelineRecord record,
+                              List<PolicyResult> results) throws Exception {
+
+        for (PolicyEvaluator evaluator : evaluators) {
+
+            if (evaluator.supports(node.getPolicy())) {
+
+                PolicyResult r =
+                        evaluator.evaluate(node.getPolicy(), record);
+
+                if (r != null) {
+
+                    results.add(r);
+
+                    // short circuit
+                    if ("FILTER".equals(r.getResult()))
+                        return;
+                }
+            }
+        }
+
+        for (PolicyNode child : node.getChildren()) {
+
+            evaluateNode(child, record, results);
+        }
+    }
+}

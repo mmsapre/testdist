@@ -1,0 +1,60 @@
+package engine;
+
+import com.brunocesar.jsonlogic.JsonLogic;
+
+import expressions.*;
+import mask.MaskPathIndex;
+import dsl.QueryDslExecutor;
+
+public class PolicyEngine {
+
+    private JsonLogic jsonLogic;
+
+    public PolicyEngine(QueryDslExecutor dslExecutor,
+                        MaskPathIndex maskIndex) {
+
+        jsonLogic = new JsonLogic();
+
+        // FLOW
+        jsonLogic.addOperation("switch",
+                new SwitchExpression());
+
+        // VARIABLE ACCESS
+        jsonLogic.addOperation("var_jsonpath",
+                new JsonPathVarExpression());
+
+        jsonLogic.addOperation("var_xpath",
+                new XPathVarExpression());
+
+        // DSL
+        jsonLogic.addOperation("dsl",
+                new DslExpression(dslExecutor));
+
+        // MASKING
+        jsonLogic.addOperation("mask_include",
+                new MaskIncludeExpression(maskIndex));
+
+        jsonLogic.addOperation("mask_exclude",
+                new MaskExcludeExpression(maskIndex));
+
+        // PAYLOAD MODIFICATION
+        jsonLogic.addOperation("override",
+                new OverrideExpression());
+
+        jsonLogic.addOperation("enrich",
+                new EnrichExpression(dslExecutor));
+
+        // FLOW CONTROL
+        jsonLogic.addOperation("pass",
+                new PassExpression());
+
+        jsonLogic.addOperation("filter",
+                new FilterExpression());
+    }
+
+    public Object evaluate(Object rule,Object payload)
+            throws Exception {
+
+        return jsonLogic.apply(rule,payload);
+    }
+}

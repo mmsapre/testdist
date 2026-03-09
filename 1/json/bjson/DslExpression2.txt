@@ -1,0 +1,23 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import model.*;
+
+public class DslExpression implements JsonLogicExpression {
+
+    public String key(){
+        return "dsl";
+    }
+
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           java.util.List<JsonLogicNode> args,
+                           Object data,
+                           String path){
+
+        return new ActionResult(
+                "DSL",
+                java.util.Map.of(
+                        "alias",
+                        args.get(0).toString()));
+    }
+}

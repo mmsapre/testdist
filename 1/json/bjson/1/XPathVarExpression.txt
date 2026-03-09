@@ -1,0 +1,31 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import model.PayloadContext;
+
+import javax.xml.xpath.*;
+import java.util.List;
+
+public class XPathVarExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "var_xpath";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) throws Exception {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        XPath xp = XPathFactory.newInstance().newXPath();
+
+        return xp.evaluate(
+                args.get(0).toString(),
+                payload.getXml());
+    }
+}

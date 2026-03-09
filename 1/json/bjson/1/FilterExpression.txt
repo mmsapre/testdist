@@ -1,0 +1,22 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import java.util.List;
+
+public class FilterExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "filter";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) {
+
+        return null;
+    }
+}

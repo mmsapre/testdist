@@ -1,0 +1,13 @@
+package processors;
+
+import engine.ActionProcessor;
+import model.*;
+
+public class FilterProcessor implements ActionProcessor {
+
+    public PayloadContext process(PayloadContext payload,
+                                  ActionResult result){
+
+        return null;
+    }
+}

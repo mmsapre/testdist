@@ -1,0 +1,38 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.dsl.DslQueryExecutor;
+import com.acme.graavl.logic.JsonLogicEngine;
+import com.acme.graavl.logic.RuleContext;
+import com.acme.graavl.policy.PolicyResult;
+
+public class PolicyDbEvaluator implements PolicyEvaluator {
+
+    private JsonLogicEngine engine;
+
+    private RuleContext context;
+
+    @Override
+    public boolean supports(PolicyConfig config) {
+        return config.getMode() == PolicyMode.POLICY_DB;
+    }
+
+    @Override
+    public PolicyResult evaluate(PolicyConfig config,
+                                 PipelineRecord record) throws Exception {
+
+        Object decision = engine.evaluate(config.getRule(),
+                                          record,
+                                          context);
+
+        if (decision == null)
+            return null;
+
+        PolicyResult r = new PolicyResult();
+
+        r.setResult(decision.toString());
+
+        return r;
+    }
+}

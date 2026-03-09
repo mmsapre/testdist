@@ -1,0 +1,30 @@
+package processors;
+
+import engine.ActionProcessor;
+import mask.MaskPathIndex;
+import model.*;
+
+import com.jayway.jsonpath.*;
+
+public class PartialMaskProcessor implements ActionProcessor {
+
+    private MaskPathIndex index;
+
+    public PartialMaskProcessor(MaskPathIndex index){
+        this.index=index;
+    }
+
+    public PayloadContext process(PayloadContext payload,
+                                  ActionResult result){
+
+        DocumentContext ctx =
+                JsonPath.parse(payload.getJson());
+
+        for(JsonPath p:index.getInclude("PARTIAL_MASK"))
+            ctx.set(p.getPath(),"****");
+
+        payload.setJson(ctx.jsonString());
+
+        return payload;
+    }
+}

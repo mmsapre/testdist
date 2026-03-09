@@ -1,0 +1,38 @@
+package mask;
+
+import com.jayway.jsonpath.JsonPath;
+import java.util.*;
+
+public class MaskPathIndex {
+
+    private Map<String,List<JsonPath>> includePaths = new HashMap<>();
+    private Map<String,List<JsonPath>> excludePaths = new HashMap<>();
+
+    public void registerInclude(String action,List<String> paths){
+
+        List<JsonPath> compiled = new ArrayList<>();
+
+        for(String p:paths)
+            compiled.add(JsonPath.compile(p));
+
+        includePaths.put(action,compiled);
+    }
+
+    public void registerExclude(String action,List<String> paths){
+
+        List<JsonPath> compiled = new ArrayList<>();
+
+        for(String p:paths)
+            compiled.add(JsonPath.compile(p));
+
+        excludePaths.put(action,compiled);
+    }
+
+    public List<JsonPath> getInclude(String action){
+        return includePaths.get(action);
+    }
+
+    public List<JsonPath> getExclude(String action){
+        return excludePaths.get(action);
+    }
+}

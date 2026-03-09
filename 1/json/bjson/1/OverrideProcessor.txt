@@ -1,0 +1,32 @@
+package action;
+
+import com.jayway.jsonpath.*;
+import model.PayloadContext;
+
+import java.util.Map;
+
+public class OverrideProcessor implements ActionProcessor {
+
+    private Map<String,Object> values;
+
+    public OverrideProcessor(Map<String,Object> values){
+        this.values=values;
+    }
+
+    public String action(){
+        return "OVERRIDE";
+    }
+
+    public Object process(PayloadContext payload){
+
+        DocumentContext ctx =
+                JsonPath.parse(payload.getJson());
+
+        for(String p:values.keySet())
+            ctx.set(p,values.get(p));
+
+        payload.setJson(ctx.jsonString());
+
+        return payload;
+    }
+}

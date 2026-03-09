@@ -1,0 +1,28 @@
+package com.acme.graavl.graph;
+
+import com.acme.graavl.config.PolicyConfig;
+import com.acme.graavl.config.ValidationConfig;
+
+import java.util.Map;
+
+public class PolicyGraphBuilder {
+
+    public PolicyGraph build(ValidationConfig config) {
+
+        PolicyGraph graph = new PolicyGraph();
+
+        for (Map.Entry<String, PolicyConfig> e :
+                config.getPolicies().entrySet()) {
+
+            PolicyNode node = new PolicyNode();
+
+            node.setId(e.getKey());
+
+            node.setPolicy(e.getValue());
+
+            graph.addRoot(node);
+        }
+
+        return graph;
+    }
+}

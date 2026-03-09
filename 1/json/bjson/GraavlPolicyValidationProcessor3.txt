@@ -1,0 +1,51 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.ValidationConfig;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.graph.*;
+import com.acme.graavl.policy.*;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.List;
+
+public class GraavlPolicyValidationProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private ValidationConfig config;
+
+    private PolicyGraphEvaluator graphEvaluator;
+
+    private PolicyAggregator aggregator;
+
+    private PolicyGraph graph;
+
+    @Override
+    public PipelineRecord processRecord(Record<PipelineRecord> record) throws Exception {
+
+        PipelineRecord payload = record.getPayload();
+
+        if (!config.isEnabled() || config.isBypass())
+            return payload;
+
+        List<PolicyResult> results =
+                graphEvaluator.evaluate(graph, payload);
+
+        PolicyResult decision = aggregator.resolve(results);
+
+        applyDecision(decision, payload);
+
+        return payload;
+    }
+
+    private void applyDecision(PolicyResult decision,
+                               PipelineRecord record) {
+
+        if (decision == null)
+            return;
+
+        if ("FILTER".equals(decision.getResult()))
+            throw new RuntimeException("Filtered by policy");
+    }
+}

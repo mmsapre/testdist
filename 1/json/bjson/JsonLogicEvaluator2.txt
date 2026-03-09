@@ -1,0 +1,45 @@
+package com.acme.graavl.logic;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogic;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Map;
+
+public class JsonLogicEvaluator {
+
+    private final JsonLogic jsonLogic = new JsonLogic();
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public boolean evaluate(String rule, Map<String, Object> data) {
+
+        try {
+
+            Object ruleObj = mapper.readValue(rule, Object.class);
+
+            Object result = jsonLogic.apply(ruleObj, data);
+
+            if (result instanceof Boolean) {
+                return (Boolean) result;
+            }
+
+            if (result instanceof Number) {
+                return ((Number) result).intValue() != 0;
+            }
+
+            if (result instanceof String) {
+                return Boolean.parseBoolean((String) result);
+            }
+
+            return false;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException("JSON-Logic evaluation failed", e);
+
+        }
+
+    }
+
+}

@@ -1,0 +1,68 @@
+package com.acme.graavl.steps;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.policy.*;
+import com.acme.graavl.validation.*;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class GraavlPolicyValidationProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private ValidationConfig validationConfig;
+
+    private List<PolicyEvaluator> evaluators;
+
+    private PolicyAggregator aggregator;
+
+    @Override
+    public PipelineRecord processRecord(Record<PipelineRecord> record) throws Exception {
+
+        PipelineRecord payload = record.getPayload();
+
+        if (!validationConfig.isEnabled() || validationConfig.isBypass())
+            return payload;
+
+        List<PolicyResult> results = new ArrayList<>();
+
+        for (Map.Entry<String, PolicyConfig> entry : validationConfig.getPolicies().entrySet()) {
+
+            PolicyConfig policy = entry.getValue();
+
+            for (PolicyEvaluator evaluator : evaluators) {
+
+                if (evaluator.supports(policy)) {
+
+                    PolicyResult r = evaluator.evaluate(policy, payload);
+
+                    if (r != null)
+                        results.add(r);
+                }
+            }
+        }
+
+        PolicyResult decision = aggregator.resolve(results);
+
+        applyDecision(decision, payload);
+
+        return payload;
+    }
+
+    private void applyDecision(PolicyResult decision,
+                               PipelineRecord record) {
+
+        if (decision == null)
+            return;
+
+        if ("FILTER".equals(decision.getResult()))
+            throw new RuntimeException("Filtered by policy");
+
+        // masking handled separately
+    }
+}

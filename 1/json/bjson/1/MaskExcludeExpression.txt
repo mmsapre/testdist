@@ -1,0 +1,46 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import com.jayway.jsonpath.*;
+
+import mask.MaskPathIndex;
+import model.PayloadContext;
+
+import java.util.List;
+
+public class MaskExcludeExpression implements JsonLogicExpression {
+
+    private MaskPathIndex index;
+
+    public MaskExcludeExpression(MaskPathIndex index){
+        this.index = index;
+    }
+
+    @Override
+    public String key() {
+        return "mask_exclude";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) {
+
+        PayloadContext payload = (PayloadContext)data;
+
+        DocumentContext ctx =
+                JsonPath.parse(payload.getJson());
+
+        ctx.set("$","****");
+
+        for(JsonPath p:index.getExclude("MASK_EXCLUDE"))
+            ctx.set(p.getPath(),
+                    JsonPath.read(payload.getJson(),
+                    p.getPath()));
+
+        payload.setJson(ctx.jsonString());
+
+        return payload;
+    }
+}

@@ -1,0 +1,10 @@
+package action;
+
+import model.PayloadContext;
+
+public interface ActionProcessor {
+
+    String action();
+
+    Object process(PayloadContext payload);
+}

@@ -1,0 +1,13 @@
+package engine;
+
+import model.PayloadContext;
+
+import java.util.Map;
+
+public interface ActionProcessor {
+
+    PayloadContext process(
+            PayloadContext payload,
+            Map<String,Object> rule
+    ) throws Exception;
+}

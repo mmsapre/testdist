@@ -1,0 +1,51 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.policy.PolicyResult;
+import com.jayway.jsonpath.JsonPath;
+
+import javax.sql.DataSource;
+import java.sql.*;
+
+public class DslQueryExecutor {
+
+    private ValidationConfig config;
+
+    private DataSource dataSource;
+
+    private DslSqlBuilder builder = new DslSqlBuilder();
+
+    public PolicyResult execute(String key, PipelineRecord record) throws Exception {
+
+        DslQueryConfig q = config.getDslQueries().get(key);
+
+        String sql = builder.build(q);
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            int idx = 1;
+
+            for (WhereConfig w : q.getWhere()) {
+
+                Object val = JsonPath.read(record.getPayload(), w.getPath());
+
+                ps.setObject(idx++, val);
+            }
+
+            ResultSet rs = ps.executeQuery();
+
+            if (!rs.next())
+                return null;
+
+            PolicyResult r = new PolicyResult();
+
+            r.setResult(rs.getString("result"));
+
+            r.setPriority(rs.getInt("priority"));
+
+            return r;
+        }
+    }
+}

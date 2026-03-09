@@ -1,0 +1,39 @@
+package com.acme.graavl.graph;
+
+import com.acme.graavl.config.PolicyConfig;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class PolicyNode {
+
+    private String id;
+
+    private PolicyConfig policy;
+
+    private List<PolicyNode> children = new ArrayList<>();
+
+    public String getId() {
+        return id;
+    }
+
+    public PolicyConfig getPolicy() {
+        return policy;
+    }
+
+    public List<PolicyNode> getChildren() {
+        return children;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setPolicy(PolicyConfig policy) {
+        this.policy = policy;
+    }
+
+    public void addChild(PolicyNode node) {
+        children.add(node);
+    }
+}

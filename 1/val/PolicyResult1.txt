@@ -1,0 +1,46 @@
+package com.acme.graavl.policy;
+
+import java.util.List;
+
+public class PolicyResult {
+
+    private String result;
+
+    private int priority;
+
+    private List<String> maskInclude;
+
+    private List<String> maskExclude;
+
+    public String getResult() {
+        return result;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public List<String> getMaskInclude() {
+        return maskInclude;
+    }
+
+    public List<String> getMaskExclude() {
+        return maskExclude;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public void setMaskInclude(List<String> maskInclude) {
+        this.maskInclude = maskInclude;
+    }
+
+    public void setMaskExclude(List<String> maskExclude) {
+        this.maskExclude = maskExclude;
+    }
+}

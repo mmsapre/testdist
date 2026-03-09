@@ -1,0 +1,35 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.policy.PolicyResult;
+
+import javax.xml.xpath.*;
+
+public class XPathPolicyEvaluator implements PolicyEvaluator {
+
+    @Override
+    public boolean supports(PolicyConfig config) {
+        return config.getMode() == PolicyMode.XPATH;
+    }
+
+    @Override
+    public PolicyResult evaluate(PolicyConfig config,
+                                 PipelineRecord record) throws Exception {
+
+        XPath xp = XPathFactory.newInstance().newXPath();
+
+        String result = xp.evaluate(config.getXpath(),
+                                    record.getPayload());
+
+        if (result == null || result.isEmpty())
+            return null;
+
+        PolicyResult r = new PolicyResult();
+
+        r.setResult(config.getAction());
+        r.setPriority(1);
+
+        return r;
+    }
+}

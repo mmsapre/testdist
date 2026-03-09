@@ -1,0 +1,37 @@
+package operators;
+
+import com.brunocesar.jsonlogic.*;
+import model.PayloadContext;
+
+import com.jayway.jsonpath.*;
+
+import java.util.*;
+
+public class MaskIncludeExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "mask_include";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) {
+
+        PayloadContext payload = (PayloadContext)data;
+
+        List<String> paths = (List<String>)args.get(0);
+
+        DocumentContext ctx =
+                JsonPath.parse(payload.getJson());
+
+        for(String p:paths)
+            ctx.set(p,"****");
+
+        payload.setJson(ctx.jsonString());
+
+        return payload;
+    }
+}

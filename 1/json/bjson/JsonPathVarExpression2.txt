@@ -1,0 +1,25 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import com.jayway.jsonpath.JsonPath;
+
+import model.PayloadContext;
+
+public class JsonPathVarExpression implements JsonLogicExpression {
+
+    public String key(){
+        return "var_jsonpath";
+    }
+
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           java.util.List<JsonLogicNode> args,
+                           Object data,
+                           String path){
+
+        PayloadContext payload = (PayloadContext)data;
+
+        return JsonPath.read(
+                payload.getJson(),
+                args.get(0).toString());
+    }
+}

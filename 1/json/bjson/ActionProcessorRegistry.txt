@@ -1,0 +1,19 @@
+package engine;
+
+import java.util.*;
+
+public class ActionProcessorRegistry {
+
+    private Map<String,ActionProcessor> processors =
+            new HashMap<>();
+
+    public void register(String name,
+                         ActionProcessor processor){
+
+        processors.put(name,processor);
+    }
+
+    public ActionProcessor get(String name){
+        return processors.get(name);
+    }
+}

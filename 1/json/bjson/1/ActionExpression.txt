@@ -1,0 +1,25 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import java.util.List;
+
+public class ActionExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "action";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) throws Exception {
+
+        Object action =
+                args.get(0).evaluate(evaluator,data,path);
+
+        return action;
+    }
+}

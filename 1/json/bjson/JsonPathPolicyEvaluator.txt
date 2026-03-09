@@ -1,0 +1,32 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.policy.PolicyResult;
+import com.jayway.jsonpath.JsonPath;
+
+public class JsonPathPolicyEvaluator implements PolicyEvaluator {
+
+    @Override
+    public boolean supports(PolicyConfig config) {
+        return config.getMode() == PolicyMode.JSONPATH;
+    }
+
+    @Override
+    public PolicyResult evaluate(PolicyConfig config,
+                                 PipelineRecord record) {
+
+        Object val = JsonPath.read(record.getPayload(),
+                                   config.getJsonPath());
+
+        if (val == null)
+            return null;
+
+        PolicyResult r = new PolicyResult();
+
+        r.setResult(config.getAction());
+        r.setPriority(1);
+
+        return r;
+    }
+}

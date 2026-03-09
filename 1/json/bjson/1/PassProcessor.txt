@@ -1,0 +1,14 @@
+package action;
+
+import model.PayloadContext;
+
+public class PassProcessor implements ActionProcessor {
+
+    public String action() {
+        return "PASS";
+    }
+
+    public Object process(PayloadContext payload) {
+        return payload;
+    }
+}

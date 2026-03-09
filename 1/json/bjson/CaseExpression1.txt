@@ -1,0 +1,50 @@
+package operators;
+
+import com.brunocesar.jsonlogic.*;
+
+import java.util.*;
+
+public class CaseExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "case";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           List<JsonLogicNode> args,
+                           Object data,
+                           String path) throws Exception {
+
+        for (JsonLogicNode node : args) {
+
+            Map<String,Object> branch =
+                    (Map<String,Object>) node.evaluate(evaluator,data,path);
+
+            if(branch.containsKey("when")) {
+
+                Object cond =
+                        evaluator.evaluate(branch.get("when"),data,path);
+
+                if(Boolean.TRUE.equals(cond)) {
+
+                    return evaluator.evaluate(
+                            branch.get("then"),
+                            data,
+                            path);
+                }
+            }
+
+            if(branch.containsKey("else")) {
+
+                return evaluator.evaluate(
+                        branch.get("else"),
+                        data,
+                        path);
+            }
+        }
+
+        return null;
+    }
+}

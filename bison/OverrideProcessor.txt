@@ -1,0 +1,30 @@
+package actions;
+
+import engine.ActionProcessor;
+import model.PayloadContext;
+
+import com.jayway.jsonpath.*;
+
+import java.util.Map;
+
+public class OverrideProcessor implements ActionProcessor {
+
+    @Override
+    public PayloadContext process(
+            PayloadContext payload,
+            Map<String,Object> rule){
+
+        Map<String,Object> overrides =
+                (Map<String,Object>)rule.get("override");
+
+        DocumentContext ctx =
+                JsonPath.parse(payload.getJson());
+
+        for(String path:overrides.keySet())
+            ctx.set(path,overrides.get(path));
+
+        payload.setJson(ctx.jsonString());
+
+        return payload;
+    }
+}

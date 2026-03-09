@@ -1,0 +1,14 @@
+package action;
+
+import model.PayloadContext;
+
+public class FilterProcessor implements ActionProcessor {
+
+    public String action() {
+        return "FILTER";
+    }
+
+    public Object process(PayloadContext payload) {
+        return null;
+    }
+}

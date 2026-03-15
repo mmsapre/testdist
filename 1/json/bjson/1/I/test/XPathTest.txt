@@ -1,0 +1,52 @@
+package com.acme.graavl.test;
+
+import com.acme.graavl.dsl.MockQueryDslExecutor;
+import com.acme.graavl.logic.PolicyEngine;
+
+import org.junit.jupiter.api.Test;
+
+import org.w3c.dom.Document;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class XPathTest {
+
+    @Test
+    public void testXPathExtraction() throws Exception {
+
+        MockQueryDslExecutor dsl = new MockQueryDslExecutor();
+
+        PolicyEngine engine = new PolicyEngine(dsl);
+
+        String xml =
+        """
+        <Account>
+            <Country>DE</Country>
+        </Account>
+        """;
+
+        Document doc =
+        DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new java.io.ByteArrayInputStream(xml.getBytes()));
+
+        String rule =
+        """
+        {
+          "==":[
+            {"var_xpath":"/Account/Country/text()"},
+            "DE"
+          ]
+        }
+        """;
+
+        Object result =
+                engine.evaluate(rule,
+                        Map.of("xml",doc));
+
+        assertEquals(true,result);
+    }
+}

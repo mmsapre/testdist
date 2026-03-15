@@ -1,0 +1,12 @@
+package com.acme.graavl.logic.extensions;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogicOperation;
+
+public class MaskIncludeExpression implements JsonLogicOperation {
+
+    @Override
+    public Object apply(Object[] args) {
+
+        return args;
+    }
+}

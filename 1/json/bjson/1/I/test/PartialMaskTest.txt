@@ -1,0 +1,47 @@
+package com.acme.graavl.test;
+
+import com.acme.graavl.dsl.MockQueryDslExecutor;
+import com.acme.graavl.logic.PolicyEngine;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class PartialMaskTest {
+
+    @Test
+    public void testPartialMaskRule() {
+
+        MockQueryDslExecutor dsl = new MockQueryDslExecutor();
+
+        dsl.add("HIGH_RISK_ACCOUNT_COUNT",1);
+
+        PolicyEngine engine = new PolicyEngine(dsl);
+
+        String rule =
+        """
+        {
+          "if":[
+            {">":[{"dsl":"HIGH_RISK_ACCOUNT_COUNT"},0]},
+            {"mask":["PARTIAL_MASK",
+              ["$.Account.balance","$.Account.ssn"]
+            ]},
+            "PASS"
+          ]
+        }
+        """;
+
+        Object result =
+                engine.evaluate(rule,
+                        Map.of("payload","{}"));
+
+        assertNotNull(result);
+
+        Map decision = (Map) result;
+
+        assertEquals("PARTIAL_MASK",
+                decision.get("action"));
+    }
+}

@@ -1,0 +1,24 @@
+package com.acme.graavl.logic.extensions;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogicOperation;
+
+import java.util.*;
+
+public class MaskExpression implements JsonLogicOperation {
+
+    @Override
+    public Object apply(Object[] args) {
+
+        Map<String,Object> decision = new HashMap<>();
+
+        decision.put("action", args[0]);
+
+        if(args.length > 1)
+            decision.put("include", args[1]);
+
+        if(args.length > 2)
+            decision.put("exclude", args[2]);
+
+        return decision;
+    }
+}

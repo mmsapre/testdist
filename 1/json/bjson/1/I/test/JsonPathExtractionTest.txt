@@ -1,0 +1,46 @@
+package com.acme.graavl.test;
+
+import com.acme.graavl.dsl.MockQueryDslExecutor;
+import com.acme.graavl.logic.PolicyEngine;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class JsonPathExtractionTest {
+
+    @Test
+    public void testJsonPathExtraction() {
+
+        MockQueryDslExecutor dsl = new MockQueryDslExecutor();
+
+        PolicyEngine engine = new PolicyEngine(dsl);
+
+        String payload =
+        """
+        {
+          "Account":{
+             "status":"ACTIVE",
+             "balance":500000
+          }
+        }
+        """;
+
+        String rule =
+        """
+        {
+          "==":[
+            {"var_jsonpath":"$.Account.status"},
+            "ACTIVE"
+          ]
+        }
+        """;
+
+        Object result = engine.evaluate(rule,
+                Map.of("payload",payload));
+
+        assertEquals(true,result);
+    }
+}

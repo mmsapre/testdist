@@ -1,0 +1,65 @@
+package com.acme.graavl.test;
+
+import com.acme.graavl.dsl.MockQueryDslExecutor;
+import com.acme.graavl.logic.PolicyEngine;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Map;
+
+public class PolicyEngineTest {
+
+    @Test
+    public void testDslFilterRule() {
+
+        MockQueryDslExecutor dsl = new MockQueryDslExecutor();
+
+        dsl.add("ACCOUNT_BLACKLIST_COUNT", 1);
+
+        PolicyEngine engine = new PolicyEngine(dsl);
+
+        String rule =
+        """
+        {
+          "if":[
+            {">":[{"dsl":"ACCOUNT_BLACKLIST_COUNT"},0]},
+            "FILTER",
+            "PASS"
+          ]
+        }
+        """;
+
+        Object result = engine.evaluate(rule,
+                Map.of("payload","{}"));
+
+        assertEquals("FILTER", result);
+    }
+
+    @Test
+    public void testDslPassRule() {
+
+        MockQueryDslExecutor dsl = new MockQueryDslExecutor();
+
+        dsl.add("ACCOUNT_BLACKLIST_COUNT", 0);
+
+        PolicyEngine engine = new PolicyEngine(dsl);
+
+        String rule =
+        """
+        {
+          "if":[
+            {">":[{"dsl":"ACCOUNT_BLACKLIST_COUNT"},0]},
+            "FILTER",
+            "PASS"
+          ]
+        }
+        """;
+
+        Object result = engine.evaluate(rule,
+                Map.of("payload","{}"));
+
+        assertEquals("PASS", result);
+    }
+}

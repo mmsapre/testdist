@@ -1,0 +1,19 @@
+package com.acme.graavl.dsl;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class MockQueryDslExecutor implements QueryDslExecutor {
+
+    private Map<String,Integer> store = new HashMap<>();
+
+    public void add(String key, int value) {
+        store.put(key,value);
+    }
+
+    @Override
+    public Object execute(String key) {
+
+        return store.getOrDefault(key,0);
+    }
+}

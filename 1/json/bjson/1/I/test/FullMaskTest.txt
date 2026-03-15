@@ -1,0 +1,45 @@
+package com.acme.graavl.test;
+
+import com.acme.graavl.dsl.MockQueryDslExecutor;
+import com.acme.graavl.logic.PolicyEngine;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class FullMaskTest {
+
+    @Test
+    public void testFullMaskRule() {
+
+        MockQueryDslExecutor dsl = new MockQueryDslExecutor();
+
+        dsl.add("ACCOUNT_BLACKLIST_COUNT",2);
+
+        PolicyEngine engine = new PolicyEngine(dsl);
+
+        String rule =
+        """
+        {
+          "if":[
+            {">":[{"dsl":"ACCOUNT_BLACKLIST_COUNT"},0]},
+            {"mask":["FULL_MASK",[],
+              ["$.Account.accountNo"]
+            ]},
+            "PASS"
+          ]
+        }
+        """;
+
+        Object result =
+                engine.evaluate(rule,
+                        Map.of("payload","{}"));
+
+        Map decision = (Map) result;
+
+        assertEquals("FULL_MASK",
+                decision.get("action"));
+    }
+}

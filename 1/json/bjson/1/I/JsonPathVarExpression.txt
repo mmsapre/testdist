@@ -1,0 +1,21 @@
+package com.acme.graavl.logic.extensions;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogicOperation;
+import com.jayway.jsonpath.JsonPath;
+
+import java.util.Map;
+
+public class JsonPathVarExpression implements JsonLogicOperation {
+
+    @Override
+    public Object apply(Object[] args) {
+
+        String path = args[0].toString();
+
+        Map<String,Object> ctx = (Map<String,Object>) args[1];
+
+        String payload = ctx.get("payload").toString();
+
+        return JsonPath.read(payload, path);
+    }
+}

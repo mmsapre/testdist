@@ -1,0 +1,67 @@
+package com.acme.graavl.logic;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogic;
+
+import com.acme.graavl.dsl.QueryDslExecutor;
+import com.acme.graavl.logic.extensions.*;
+
+public class PolicyEngine {
+
+    private final JsonLogic jsonLogic;
+
+    public PolicyEngine(QueryDslExecutor executor) {
+
+        jsonLogic = new JsonLogic();
+
+        // payload variable extraction
+        jsonLogic.addOperation("var_jsonpath",
+                new JsonPathVarExpression());
+
+        jsonLogic.addOperation("var_xpath",
+                new XPathVarExpression());
+
+        // DSL query execution
+        jsonLogic.addOperation("dsl",
+                new DslQueryExpression(executor));
+
+        // parameter extraction
+        jsonLogic.addOperation("dsl_param",
+                new DslParamExpression());
+
+        // masking
+        jsonLogic.addOperation("mask",
+                new MaskExpression());
+
+        jsonLogic.addOperation("mask_include",
+                new MaskIncludeExpression());
+
+        jsonLogic.addOperation("mask_exclude",
+                new MaskExcludeExpression());
+
+        // payload operations
+        jsonLogic.addOperation("override",
+                new OverrideExpression());
+
+        jsonLogic.addOperation("enrich",
+                new EnrichExpression(executor));
+
+        // control flow helpers
+        jsonLogic.addOperation("pass",
+                new PassExpression());
+
+        jsonLogic.addOperation("filter",
+                new FilterExpression());
+
+        jsonLogic.addOperation("switch",
+                new SwitchExpression());
+
+        jsonLogic.addOperation("case",
+                new CaseExpression());
+    }
+
+    public Object evaluate(Object rule,
+                           Object data) {
+
+        return jsonLogic.apply(rule, data);
+    }
+}

@@ -1,0 +1,17 @@
+{
+  "if": [
+    {
+      ">": [
+        { "dsl": "ACCOUNT_BLACKLIST_COUNT" },
+        0
+      ]
+    },
+    {
+      "mask": [
+        "PARTIAL_MASK",
+        ["$.Account.balance","$.Account.ssn"]
+      ]
+    },
+    "PASS"
+  ]
+}

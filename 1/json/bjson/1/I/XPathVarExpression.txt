@@ -1,0 +1,33 @@
+package com.acme.graavl.logic.extensions;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogicOperation;
+
+import javax.xml.xpath.*;
+import org.w3c.dom.Document;
+
+import java.util.Map;
+
+public class XPathVarExpression implements JsonLogicOperation {
+
+    @Override
+    public Object apply(Object[] args) {
+
+        try {
+
+            String xpath = args[0].toString();
+
+            Map<String,Object> ctx =
+                    (Map<String,Object>) args[1];
+
+            Document doc = (Document) ctx.get("xml");
+
+            XPath xp = XPathFactory.newInstance().newXPath();
+
+            return xp.evaluate(xpath, doc);
+
+        } catch(Exception e) {
+
+            throw new RuntimeException(e);
+        }
+    }
+}

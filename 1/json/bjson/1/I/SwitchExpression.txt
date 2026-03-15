@@ -1,0 +1,16 @@
+package com.acme.graavl.logic.extensions;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogicOperation;
+
+public class SwitchExpression implements JsonLogicOperation {
+
+    @Override
+    public Object apply(Object[] args) {
+
+        for(Object o : args)
+            if(o != null)
+                return o;
+
+        return null;
+    }
+}

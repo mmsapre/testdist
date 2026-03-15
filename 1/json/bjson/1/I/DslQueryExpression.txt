@@ -1,0 +1,21 @@
+package com.acme.graavl.logic.extensions;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogicOperation;
+import com.acme.graavl.dsl.QueryDslExecutor;
+
+public class DslQueryExpression implements JsonLogicOperation {
+
+    private QueryDslExecutor executor;
+
+    public DslQueryExpression(QueryDslExecutor executor) {
+        this.executor = executor;
+    }
+
+    @Override
+    public Object apply(Object[] args) {
+
+        String queryKey = args[0].toString();
+
+        return executor.execute(queryKey);
+    }
+}

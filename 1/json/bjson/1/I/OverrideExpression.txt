@@ -1,0 +1,23 @@
+package com.acme.graavl.logic.extensions;
+
+import io.github.brunocribeiro.jsonlogic.JsonLogicOperation;
+
+import java.util.Map;
+
+public class OverrideExpression implements JsonLogicOperation {
+
+    @Override
+    public Object apply(Object[] args) {
+
+        Map<String,Object> ctx =
+                (Map<String,Object>) args[0];
+
+        String key = args[1].toString();
+
+        Object value = args[2];
+
+        ctx.put(key, value);
+
+        return ctx;
+    }
+}

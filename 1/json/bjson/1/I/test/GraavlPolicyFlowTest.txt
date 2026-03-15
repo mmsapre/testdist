@@ -1,0 +1,53 @@
+package com.acme.graavl.test;
+
+import com.acme.graavl.dsl.MockQueryDslExecutor;
+import com.acme.graavl.logic.PolicyEngine;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class GraavlPolicyFlowTest {
+
+    @Test
+    public void testPolicyFlow() {
+
+        MockQueryDslExecutor dsl = new MockQueryDslExecutor();
+
+        dsl.add("ACCOUNT_BLACKLIST_COUNT",1);
+
+        PolicyEngine engine = new PolicyEngine(dsl);
+
+        String payload =
+        """
+        {
+          "Account":{
+            "status":"ACTIVE"
+          }
+        }
+        """;
+
+        String rule =
+        """
+        {
+          "and":[
+            {
+              "==":[
+                {"var_jsonpath":"$.Account.status"},
+                "ACTIVE"
+              ]
+            },
+            {"dsl":"ACCOUNT_BLACKLIST_COUNT"}
+          ]
+        }
+        """;
+
+        Object result =
+                engine.evaluate(rule,
+                        Map.of("payload",payload));
+
+        assertEquals(1,result);
+    }
+}

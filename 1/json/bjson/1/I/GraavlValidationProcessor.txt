@@ -1,0 +1,80 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.logic.PolicyExecutionContext;
+import com.acme.graavl.mask.GraavlMaskEngine;
+import com.acme.graavl.policy.PolicyDecision;
+import com.acme.graavl.policy.PolicyDecisionMapper;
+
+import com.brunocesar.jsonlogic.ast.JsonLogicNode;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+public class GraavlValidationProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final JsonLogicEvaluator evaluator;
+    private final JsonLogicNode rule;
+    private final GraavlMaskEngine maskEngine;
+    private final PolicyDecisionMapper mapper;
+
+    public GraavlValidationProcessor(JsonLogicEvaluator evaluator,
+                                     JsonLogicNode rule,
+                                     GraavlMaskEngine maskEngine,
+                                     PolicyDecisionMapper mapper) {
+
+        this.evaluator = evaluator;
+        this.rule = rule;
+        this.maskEngine = maskEngine;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public PipelineRecord processRecord(
+            Record<PipelineRecord> record) throws Exception {
+
+        PipelineRecord r = record.getPayload();
+
+        PolicyExecutionContext ctx = new PolicyExecutionContext();
+        ctx.setPayload(r.getPayload());
+        ctx.setXmlDocument(r.getXml());
+
+        Object result = evaluator.evaluate(rule, ctx);
+
+        PolicyDecision decision = mapper.map(result);
+
+        if (decision == null)
+            return r;
+
+        switch (decision.getAction()) {
+
+            case "PASS":
+                return r;
+
+            case "FILTER":
+                throw new RuntimeException("Filtered by policy");
+
+            case "FULL_MASK":
+
+                r.setPayload(
+                        maskEngine.applyFullMask(
+                                r.getPayload(),
+                                decision.getExclude()));
+
+                return r;
+
+            case "PARTIAL_MASK":
+
+                r.setPayload(
+                        maskEngine.applyPartialMask(
+                                r.getPayload(),
+                                decision.getInclude()));
+
+                return r;
+
+            default:
+                return r;
+        }
+    }
+}

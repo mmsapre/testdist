@@ -1,0 +1,29 @@
+package com.acme.graavl.test;
+
+import com.acme.graavl.dsl.QueryDslExecutor;
+import com.acme.graavl.logic.GraavlPolicyEvaluatorFactory;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class GraavlPolicyEngineTest {
+
+    @Test
+    public void testBlacklistRule() throws Exception {
+
+        QueryDslExecutor dsl = new QueryDslExecutor();
+
+        dsl.add("ACCOUNT_BLACKLIST_COUNT", 1);
+
+        GraavlPolicyEvaluatorFactory factory =
+                new GraavlPolicyEvaluatorFactory();
+
+        JsonLogicEvaluator evaluator =
+                factory.create(dsl);
+
+        Object result = evaluator.evaluate(ruleNode, context);
+
+        assertNotNull(result);
+    }
+}

@@ -1,0 +1,53 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.DslQueryConfig;
+import com.acme.graavl.config.DslWhereConfig;
+import com.acme.graavl.extract.JsonPathExtractor;
+import com.acme.graavl.extract.XPathExtractor;
+import com.acme.graavl.logic.PolicyExecutionContext;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+public class DslParameterBinder {
+
+    private final JsonPathExtractor jsonPathExtractor;
+    private final XPathExtractor xpathExtractor;
+
+    public DslParameterBinder(JsonPathExtractor jsonPathExtractor,
+                              XPathExtractor xpathExtractor) {
+        this.jsonPathExtractor = jsonPathExtractor;
+        this.xpathExtractor = xpathExtractor;
+    }
+
+    public Map<String, Object> bind(DslQueryConfig queryConfig,
+                                    PolicyExecutionContext context) throws Exception {
+
+        Map<String, Object> bound = new LinkedHashMap<>();
+
+        if (queryConfig.getWhere() == null) {
+            return bound;
+        }
+
+        for (DslWhereConfig where : queryConfig.getWhere()) {
+            List<Object> values;
+
+            if ("JSONPATH".equalsIgnoreCase(where.getSource())) {
+                values = jsonPathExtractor.extract(context.getPayload(), where.getPath());
+            } else if ("XPATH".equalsIgnoreCase(where.getSource())) {
+                values = xpathExtractor.extract(context.getXmlDocument(), where.getPath());
+            } else {
+                throw new IllegalArgumentException("Unsupported source: " + where.getSource());
+            }
+
+            if ("IN".equalsIgnoreCase(where.getOperator())) {
+                bound.put(where.getParam(), values);
+            } else {
+                bound.put(where.getParam(), values.isEmpty() ? null : values.get(0));
+            }
+        }
+
+        return bound;
+    }
+}

@@ -1,0 +1,37 @@
+package com.acme.graavl.mask;
+
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.DocumentContext;
+
+import java.util.List;
+
+public class GraavlMaskEngine {
+
+    public String applyFullMask(String payload, List<String> exclude) {
+
+        DocumentContext ctx = JsonPath.parse(payload);
+
+        if (exclude != null) {
+            for (String path : exclude) {
+                Object value = ctx.read(path);
+                ctx.set(path, value);
+            }
+        }
+
+        return ctx.jsonString();
+    }
+
+    public String applyPartialMask(String payload, List<String> include) {
+
+        DocumentContext ctx = JsonPath.parse(payload);
+
+        if (include != null) {
+
+            for (String path : include) {
+                ctx.set(path, "XXXX");
+            }
+        }
+
+        return ctx.jsonString();
+    }
+}

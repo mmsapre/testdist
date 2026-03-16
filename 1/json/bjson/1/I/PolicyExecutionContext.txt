@@ -1,0 +1,36 @@
+package com.acme.graavl.logic;
+
+import org.w3c.dom.Document;
+
+import java.util.Map;
+
+public class PolicyExecutionContext {
+
+    private String payload;
+    private Document xmlDocument;
+    private Map<String, Object> attributes;
+
+    public String getPayload() {
+        return payload;
+    }
+
+    public void setPayload(String payload) {
+        this.payload = payload;
+    }
+
+    public Document getXmlDocument() {
+        return xmlDocument;
+    }
+
+    public void setXmlDocument(Document xmlDocument) {
+        this.xmlDocument = xmlDocument;
+    }
+
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(Map<String, Object> attributes) {
+        this.attributes = attributes;
+    }
+}

@@ -1,0 +1,23 @@
+package com.acme.graavl.extract;
+
+import com.jayway.jsonpath.JsonPath;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class JsonPathExtractor {
+
+    public List<Object> extract(String payload, String path) {
+        Object value = JsonPath.read(payload, path);
+
+        if (value instanceof List<?> list) {
+            return new ArrayList<>(list);
+        }
+
+        List<Object> result = new ArrayList<>();
+        if (value != null) {
+            result.add(value);
+        }
+        return result;
+    }
+}

@@ -1,0 +1,23 @@
+package com.acme.graavl.logic;
+
+import com.acme.graavl.dsl.QueryDslExecutor;
+import com.acme.graavl.extract.JsonPathExtractor;
+import com.acme.graavl.extract.XPathExtractor;
+import com.acme.graavl.logic.expressions.*;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+
+import java.util.List;
+
+public class GraavlPolicyEvaluatorFactory {
+
+    public JsonLogicEvaluator create(QueryDslExecutor executor) {
+        return new JsonLogicEvaluator(List.of(
+                new JsonPathExpression(new JsonPathExtractor()),
+                new XPathExpression(new XPathExtractor()),
+                new DslExpression(executor),
+                new MaskExpression(),
+                new PassExpression(),
+                new FilterExpression()
+        ));
+    }
+}

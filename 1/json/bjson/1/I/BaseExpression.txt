@@ -1,0 +1,23 @@
+package com.acme.graavl.logic.expressions;
+
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.ast.JsonLogicNode;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluationException;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicExpression;
+
+public abstract class BaseExpression implements JsonLogicExpression {
+
+    protected Object eval(JsonLogicEvaluator evaluator,
+                          JsonLogicNode node,
+                          Object data) throws JsonLogicEvaluationException {
+        return evaluator.evaluate(node, data);
+    }
+
+    protected Object arg(JsonLogicEvaluator evaluator,
+                         JsonLogicArray arguments,
+                         int index,
+                         Object data) throws JsonLogicEvaluationException {
+        return eval(evaluator, arguments.get(index), data);
+    }
+}

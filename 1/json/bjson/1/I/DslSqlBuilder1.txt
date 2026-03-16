@@ -1,0 +1,50 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.DslColumnConfig;
+import com.acme.graavl.config.DslQueryConfig;
+import com.acme.graavl.config.DslTableConfig;
+import com.acme.graavl.config.DslWhereConfig;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class DslSqlBuilder {
+
+    public String build(DslQueryConfig config, Map<String, Object> params) {
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT ");
+
+        List<String> columns = new ArrayList<>();
+        for (DslColumnConfig c : config.getColumns()) {
+            columns.add(c.getExpr() + " AS " + c.getAlias());
+        }
+        sql.append(String.join(", ", columns));
+
+        DslTableConfig table = config.getTables().get(0);
+        sql.append(" FROM ")
+           .append(table.getName())
+           .append(" ")
+           .append(table.getAlias());
+
+        if (config.getWhere() != null && !config.getWhere().isEmpty()) {
+            sql.append(" WHERE ");
+
+            List<String> predicates = new ArrayList<>();
+            for (DslWhereConfig w : config.getWhere()) {
+                Object value = params.get(w.getParam());
+
+                if ("IN".equalsIgnoreCase(w.getOperator()) && value instanceof List<?> list) {
+                    String placeholders = String.join(", ", java.util.Collections.nCopies(list.size(), "?"));
+                    predicates.add(w.getColumn() + " IN (" + placeholders + ")");
+                } else {
+                    predicates.add(w.getColumn() + " " + w.getOperator() + " ?");
+                }
+            }
+            sql.append(String.join(" AND ", predicates));
+        }
+
+        return sql.toString();
+    }
+}

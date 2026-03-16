@@ -1,0 +1,20 @@
+package com.acme.graavl.logic.expressions;
+
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluationException;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+
+public class FilterExpression extends BaseExpression {
+
+    @Override
+    public String key() {
+        return "filter";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray arguments,
+                           Object data) throws JsonLogicEvaluationException {
+        return "FILTER";
+    }
+}

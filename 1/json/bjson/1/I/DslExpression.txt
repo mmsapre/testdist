@@ -1,0 +1,33 @@
+package com.acme.graavl.logic.expressions;
+
+import com.acme.graavl.dsl.QueryDslExecutor;
+import com.acme.graavl.logic.PolicyExecutionContext;
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluationException;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+
+public class DslExpression extends BaseExpression {
+
+    private final QueryDslExecutor executor;
+
+    public DslExpression(QueryDslExecutor executor) {
+        this.executor = executor;
+    }
+
+    @Override
+    public String key() {
+        return "dsl";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray arguments,
+                           Object data) throws JsonLogicEvaluationException {
+        try {
+            String queryKey = arg(evaluator, arguments, 0, data).toString();
+            return executor.execute(queryKey, (PolicyExecutionContext) data);
+        } catch (Exception e) {
+            throw new JsonLogicEvaluationException(e);
+        }
+    }
+}

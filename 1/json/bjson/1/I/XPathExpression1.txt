@@ -1,0 +1,41 @@
+package com.acme.graavl.logic.expressions;
+
+import com.acme.graavl.extract.XPathExtractor;
+import com.acme.graavl.logic.PolicyExecutionContext;
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluationException;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+
+import java.util.List;
+
+public class XPathExpression extends BaseExpression {
+
+    private final XPathExtractor extractor;
+
+    public XPathExpression(XPathExtractor extractor) {
+        this.extractor = extractor;
+    }
+
+    @Override
+    public String key() {
+        return "var_xpath";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray arguments,
+                           Object data) throws JsonLogicEvaluationException {
+        try {
+            String xpath = arg(evaluator, arguments, 0, data).toString();
+            PolicyExecutionContext ctx = (PolicyExecutionContext) data;
+            List<Object> values = extractor.extract(ctx.getXmlDocument(), xpath);
+
+            if (values.isEmpty()) return null;
+            if (values.size() == 1) return values.get(0);
+            return values;
+
+        } catch (Exception e) {
+            throw new JsonLogicEvaluationException(e);
+        }
+    }
+}

@@ -1,0 +1,83 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.DslQueryConfig;
+import com.acme.graavl.config.ValidationConfig;
+import com.acme.graavl.logic.PolicyExecutionContext;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+public class QueryDslExecutor {
+
+    private final ValidationConfig validationConfig;
+    private final Map<String, DataSource> dataSources;
+    private final DslParameterBinder parameterBinder;
+    private final DslSqlBuilder sqlBuilder;
+
+    public QueryDslExecutor(ValidationConfig validationConfig,
+                            Map<String, DataSource> dataSources,
+                            DslParameterBinder parameterBinder,
+                            DslSqlBuilder sqlBuilder) {
+        this.validationConfig = validationConfig;
+        this.dataSources = dataSources;
+        this.parameterBinder = parameterBinder;
+        this.sqlBuilder = sqlBuilder;
+    }
+
+    public Object execute(String queryKey, PolicyExecutionContext context) {
+        try {
+            DslQueryConfig config = validationConfig.getDslQueries().get(queryKey);
+            if (config == null) {
+                throw new IllegalArgumentException("No DSL query configured for key: " + queryKey);
+            }
+
+            Map<String, Object> params = parameterBinder.bind(config, context);
+            String sql = sqlBuilder.build(config, params);
+
+            DataSource ds = dataSources.get(config.getDatasource());
+            if (ds == null) {
+                throw new IllegalArgumentException("No datasource configured: " + config.getDatasource());
+            }
+
+            try (Connection connection = ds.getConnection();
+                 PreparedStatement ps = connection.prepareStatement(sql)) {
+
+                int idx = 1;
+                for (Object value : params.values()) {
+                    if (value instanceof List<?> list) {
+                        for (Object item : list) {
+                            ps.setObject(idx++, item);
+                        }
+                    } else {
+                        ps.setObject(idx++, value);
+                    }
+                }
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return 0;
+                    }
+
+                    int columnCount = rs.getMetaData().getColumnCount();
+                    if (columnCount == 1) {
+                        return rs.getObject(1);
+                    }
+
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (int i = 1; i <= columnCount; i++) {
+                        row.put(rs.getMetaData().getColumnLabel(i), rs.getObject(i));
+                    }
+                    return row;
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("DSL execution failed for key: " + queryKey, e);
+        }
+    }
+}

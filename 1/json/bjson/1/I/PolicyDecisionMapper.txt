@@ -1,0 +1,36 @@
+package com.acme.graavl.policy;
+
+import java.util.Map;
+
+public class PolicyDecisionMapper {
+
+    public PolicyDecision map(Object result) {
+
+        if (result == null)
+            return null;
+
+        if (result instanceof String s) {
+
+            PolicyDecision d = new PolicyDecision();
+            d.setAction(s);
+            return d;
+        }
+
+        if (result instanceof Map<?, ?> map) {
+
+            PolicyDecision d = new PolicyDecision();
+
+            d.setAction((String) map.get("action"));
+
+            if (map.containsKey("include"))
+                d.setInclude((java.util.List<String>) map.get("include"));
+
+            if (map.containsKey("exclude"))
+                d.setExclude((java.util.List<String>) map.get("exclude"));
+
+            return d;
+        }
+
+        return null;
+    }
+}

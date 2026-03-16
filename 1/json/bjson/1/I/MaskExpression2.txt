@@ -1,0 +1,33 @@
+package com.acme.graavl.logic.expressions;
+
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluationException;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class MaskExpression extends BaseExpression {
+
+    @Override
+    public String key() {
+        return "mask";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray arguments,
+                           Object data) throws JsonLogicEvaluationException {
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("action", arg(evaluator, arguments, 0, data));
+
+        if (arguments.size() > 1) {
+            result.put("include", arg(evaluator, arguments, 1, data));
+        }
+        if (arguments.size() > 2) {
+            result.put("exclude", arg(evaluator, arguments, 2, data));
+        }
+        return result;
+    }
+}

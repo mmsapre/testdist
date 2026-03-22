@@ -1,0 +1,78 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import com.jayway.jsonpath.*;
+
+import model.PayloadContext;
+
+import javax.xml.xpath.*;
+import org.w3c.dom.*;
+
+import java.util.List;
+
+public class MaskIncludeExpression implements JsonLogicExpression {
+
+    private static final XPath XPATH =
+            XPathFactory.newInstance().newXPath();
+
+    @Override
+    public String key() {
+        return "mask_include";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        Object evaluated =
+                evaluator.evaluate(args.get(0), data);
+
+        if (!(evaluated instanceof List<?> paths)) {
+            return payload;
+        }
+
+        // JSON MASK
+        if (payload.hasJson()) {
+
+            DocumentContext ctx =
+                    JsonPath.parse(payload.getJson());
+
+            for (Object p : paths) {
+                if (p != null) {
+                    ctx.set(p.toString(), "****");
+                }
+            }
+
+            payload.setJson(ctx.jsonString());
+        }
+
+        // XML MASK
+        if (payload.hasXml()) {
+
+            try {
+                for (Object p : paths) {
+
+                    String xpath = p.toString();
+
+                    NodeList nodes =
+                            (NodeList) XPATH.evaluate(
+                                    xpath,
+                                    payload.getXml(),
+                                    XPathConstants.NODESET);
+
+                    for (int i = 0; i < nodes.getLength(); i++) {
+                        nodes.item(i).setTextContent("****");
+                    }
+                }
+            } catch (Exception e) {
+                throw new JsonLogicEvaluationException(e);
+            }
+        }
+
+        return payload;
+    }
+}

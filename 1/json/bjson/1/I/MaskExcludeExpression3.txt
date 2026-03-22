@@ -1,0 +1,108 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import com.jayway.jsonpath.*;
+
+import model.PayloadContext;
+
+import javax.xml.xpath.*;
+import org.w3c.dom.*;
+
+import java.util.List;
+
+public class MaskExcludeExpression implements JsonLogicExpression {
+
+    private static final XPath XPATH =
+            XPathFactory.newInstance().newXPath();
+
+    @Override
+    public String key() {
+        return "mask_exclude";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        Object evaluated =
+                evaluator.evaluate(args.get(0), data);
+
+        if (!(evaluated instanceof List<?> excludePaths)) {
+            return payload;
+        }
+
+        // ---------- JSON ----------
+        if (payload.hasJson()) {
+
+            String original = payload.getJson();
+
+            DocumentContext ctx =
+                    JsonPath.parse(original);
+
+            // mask everything
+            ctx.set("$", "****");
+
+            // restore allowed fields
+            for (Object p : excludePaths) {
+
+                try {
+                    Object val =
+                            JsonPath.read(original, p.toString());
+
+                    ctx.set(p.toString(), val);
+
+                } catch (Exception ignored) {}
+            }
+
+            payload.setJson(ctx.jsonString());
+        }
+
+        // ---------- XML ----------
+        if (payload.hasXml()) {
+
+            try {
+                // mask entire XML
+                Node root = payload.getXml().getDocumentElement();
+                maskAll(root);
+
+                // restore allowed paths
+                for (Object p : excludePaths) {
+
+                    NodeList nodes =
+                            (NodeList) XPATH.evaluate(
+                                    p.toString(),
+                                    payload.getXml(),
+                                    XPathConstants.NODESET);
+
+                    for (int i = 0; i < nodes.getLength(); i++) {
+                        nodes.item(i).setTextContent(
+                                nodes.item(i).getTextContent()
+                        );
+                    }
+                }
+
+            } catch (Exception e) {
+                throw new JsonLogicEvaluationException(e);
+            }
+        }
+
+        return payload;
+    }
+
+    private void maskAll(Node node) {
+
+        if (node.getNodeType() == Node.ELEMENT_NODE) {
+            node.setTextContent("****");
+        }
+
+        NodeList children = node.getChildNodes();
+
+        for (int i = 0; i < children.getLength(); i++) {
+            maskAll(children.item(i));
+        }
+    }
+}

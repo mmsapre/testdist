@@ -1,0 +1,43 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import com.jayway.jsonpath.*;
+
+import model.PayloadContext;
+
+import java.util.Map;
+
+public class OverrideExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "override";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        Object val =
+                evaluator.evaluate(args.get(0), data);
+
+        if (!(val instanceof Map<?, ?> map)) {
+            return payload;
+        }
+
+        DocumentContext ctx =
+                JsonPath.parse(payload.getJson());
+
+        for (Object k : map.keySet()) {
+            ctx.set(k.toString(), map.get(k));
+        }
+
+        payload.setJson(ctx.jsonString());
+
+        return payload;
+    }
+}

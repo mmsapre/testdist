@@ -1,0 +1,161 @@
+package expressions;
+
+import com.jayway.jsonpath.*;
+import org.w3c.dom.*;
+import javax.xml.xpath.*;
+
+import model.PayloadContext;
+
+import java.util.List;
+import java.util.Map;
+
+public abstract class MaskExpression {
+
+    protected static final XPath XPATH =
+            XPathFactory.newInstance().newXPath();
+
+    protected void applyMask(PayloadContext payload,
+                             List<?> paths,
+                             boolean fullMask) {
+
+        // ---------- JSON ----------
+        if (payload.hasJson()) {
+
+            String originalJson = payload.getJson();
+
+            DocumentContext ctx =
+                    JsonPath.parse(originalJson);
+
+            if (fullMask) {
+                // FULL MASK
+                maskJsonValue(ctx, "$");
+            }
+
+            for (Object p : paths) {
+
+                if (p == null) continue;
+
+                String path = p.toString();
+
+                if (fullMask) {
+                    // restore
+                    try {
+                        Object val =
+                                JsonPath.read(originalJson, path);
+
+                        ctx.set(path, val);
+
+                    } catch (Exception ignored) {}
+                } else {
+                    // partial mask
+                    maskJsonValue(ctx, path);
+                }
+            }
+
+            payload.setJson(ctx.jsonString());
+        }
+
+        // ---------- XML ----------
+        if (payload.hasXml()) {
+
+            try {
+                Document xml = payload.getXml();
+
+                if (fullMask) {
+                    maskXmlNode(xml.getDocumentElement());
+                }
+
+                for (Object p : paths) {
+
+                    if (p == null) continue;
+
+                    String xpath = p.toString();
+
+                    NodeList nodes =
+                            (NodeList) XPATH.evaluate(
+                                    xpath,
+                                    xml,
+                                    XPathConstants.NODESET);
+
+                    for (int i = 0; i < nodes.getLength(); i++) {
+
+                        Node node = nodes.item(i);
+
+                        if (fullMask) {
+                            // restore → requires original XML (advanced)
+                            continue;
+                        } else {
+                            maskXmlNode(node);
+                        }
+                    }
+                }
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    // =========================
+    // JSON MASKING
+    // =========================
+    private void maskJsonValue(DocumentContext ctx, String path) {
+
+        try {
+            Object value = ctx.read(path);
+
+            if (value == null) return;
+
+            if (value instanceof String ||
+                value instanceof Number ||
+                value instanceof Boolean) {
+
+                ctx.set(path, "****");
+            }
+
+            else if (value instanceof List<?> list) {
+
+                for (int i = 0; i < list.size(); i++) {
+                    maskJsonValue(ctx, path + "[" + i + "]");
+                }
+            }
+
+            else if (value instanceof Map<?, ?> map) {
+
+                for (Object key : map.keySet()) {
+                    maskJsonValue(ctx, path + "." + key);
+                }
+            }
+
+        } catch (Exception ignored) {}
+    }
+
+    // =========================
+    // XML MASKING
+    // =========================
+    private void maskXmlNode(Node node) {
+
+        if (node == null) return;
+
+        if (node.getNodeType() == Node.ELEMENT_NODE) {
+
+            NodeList children = node.getChildNodes();
+
+            for (int i = 0; i < children.getLength(); i++) {
+
+                Node child = children.item(i);
+
+                if (child.getNodeType() == Node.TEXT_NODE) {
+
+                    String val = child.getNodeValue();
+
+                    if (val != null && !val.trim().isEmpty()) {
+                        child.setNodeValue("****");
+                    }
+                } else {
+                    maskXmlNode(child);
+                }
+            }
+        }
+    }
+}

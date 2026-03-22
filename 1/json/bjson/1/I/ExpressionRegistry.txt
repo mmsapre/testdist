@@ -1,0 +1,23 @@
+public class ExpressionRegistry {
+
+    public static void registerAll(JsonLogic logic,
+                                   QueryDslExecutor executor) {
+
+        logic.addOperation("switch", new SwitchExpression());
+
+        logic.addOperation("var_jsonpath", new JsonPathVarExpression());
+        logic.addOperation("var_xpath", new XPathVarExpression());
+
+        logic.addOperation("dsl", new DslExpression(executor));
+
+        logic.addOperation("mask_include", new MaskIncludeExpression());
+        logic.addOperation("mask_exclude", new MaskExcludeExpression());
+
+        logic.addOperation("override", new OverrideExpression());
+
+        logic.addOperation("action", new ActionExpression());
+
+        logic.addOperation("pass", new PassExpression());
+        logic.addOperation("filter", new FilterExpression());
+    }
+}

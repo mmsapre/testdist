@@ -1,0 +1,35 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import java.util.Map;
+
+public class ActionExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "action";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        Object result =
+                evaluator.evaluate(args.get(0), data);
+
+        // DSL or structured object
+        if (result instanceof Map<?, ?> map) {
+            return map;
+        }
+
+        // String action
+        if (result instanceof String action) {
+            return Map.of("action", action);
+        }
+
+        return result;
+    }
+}

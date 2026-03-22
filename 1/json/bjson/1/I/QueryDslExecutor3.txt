@@ -1,0 +1,154 @@
+package dsl;
+
+import model.PayloadContext;
+
+import com.jayway.jsonpath.JsonPath;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.*;
+
+public class QueryDslExecutor {
+
+    private DataSource dataSource;
+    private DslRegistry registry;
+
+    public QueryDslExecutor(DataSource dataSource,
+                            DslRegistry registry) {
+        this.dataSource = dataSource;
+        this.registry = registry;
+    }
+
+    public Object execute(String alias, Object data) {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        QueryDefinition def = registry.get(alias);
+
+        Map<String,Object> params =
+                extractParams(def, payload);
+
+        try (Connection conn = dataSource.getConnection()) {
+
+            PreparedStatement ps =
+                    buildPreparedStatement(conn,
+                                           def.getSql(),
+                                           params);
+
+            ResultSet rs = ps.executeQuery();
+
+            return mapResult(rs, def.getType());
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "DSL execution failed for: " + alias, e);
+        }
+    }
+
+    // -----------------------------
+    // PARAM EXTRACTION (JSON + XML optional)
+    // -----------------------------
+    private Map<String,Object> extractParams(QueryDefinition def,
+                                             PayloadContext payload) {
+
+        Map<String,Object> params = new LinkedHashMap<>();
+
+        def.getParams().forEach((key, path) -> {
+
+            Object value = null;
+
+            if (path.startsWith("$")) {
+                value = JsonPath.read(payload.getJson(), path);
+            }
+            else if (path.startsWith("/")) {
+                // optional XPath support
+                value = XPathResolver.resolve(
+                        payload.getXml(), path);
+            }
+
+            params.put(key, value);
+        });
+
+        return params;
+    }
+
+    // -----------------------------
+    // PREPARED STATEMENT
+    // -----------------------------
+    private PreparedStatement buildPreparedStatement(Connection conn,
+                                                     String sql,
+                                                     Map<String,Object> params)
+            throws Exception {
+
+        // Replace named params → ?
+        String parsedSql =
+                sql.replaceAll(":\\w+", "?");
+
+        PreparedStatement ps =
+                conn.prepareStatement(parsedSql);
+
+        int index = 1;
+
+        for (Object val : params.values()) {
+            ps.setObject(index++, val);
+        }
+
+        return ps;
+    }
+
+    // -----------------------------
+    // RESULT MAPPING (GENERIC)
+    // -----------------------------
+    private Object mapResult(ResultSet rs,
+                             QueryType type)
+            throws Exception {
+
+        // EXISTS
+        if (type == QueryType.EXISTS) {
+            return rs.next();
+        }
+
+        // COUNT
+        if (type == QueryType.COUNT) {
+            return rs.next() ? rs.getLong(1) : 0;
+        }
+
+        // NULL CHECK
+        if (type == QueryType.NULL_CHECK) {
+            return rs.next() && rs.getObject(1) == null;
+        }
+
+        // VALUE / VALUES
+        List<Object> results = new ArrayList<>();
+
+        ResultSetMetaData meta = rs.getMetaData();
+        int colCount = meta.getColumnCount();
+
+        while (rs.next()) {
+
+            // single column
+            if (colCount == 1) {
+                results.add(rs.getObject(1));
+            }
+            // multi-column → map
+            else {
+                Map<String,Object> row = new LinkedHashMap<>();
+
+                for (int i = 1; i <= colCount; i++) {
+                    row.put(meta.getColumnName(i),
+                            rs.getObject(i));
+                }
+
+                results.add(row);
+            }
+        }
+
+        if (results.isEmpty()) return null;
+
+        if (results.size() == 1) {
+            return results.get(0);   // single
+        }
+
+        return results;              // list
+    }
+}

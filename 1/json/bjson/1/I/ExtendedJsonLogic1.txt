@@ -1,0 +1,38 @@
+package engine;
+
+import com.brunocesar.jsonlogic.JsonLogic;
+
+import expressions.*;
+import dsl.QueryDslExecutor;
+
+public class ExtendedJsonLogic extends JsonLogic {
+
+    public ExtendedJsonLogic(QueryDslExecutor executor) {
+
+        super();
+
+        // -------- FLOW --------
+        addOperation("switch", new SwitchExpression());
+
+        // -------- VARIABLES --------
+        addOperation("var_jsonpath", new JsonPathVarExpression());
+        addOperation("var_xpath", new XPathVarExpression());
+
+        // -------- DSL --------
+        addOperation("dsl", new DslExpression(executor));
+
+        // -------- MASKING --------
+        addOperation("mask_include", new MaskIncludeExpression());
+        addOperation("mask_exclude", new MaskExcludeExpression());
+
+        // -------- PAYLOAD MODIFICATION --------
+        addOperation("override", new OverrideExpression());
+
+        // -------- ACTION --------
+        addOperation("action", new ActionExpression());
+
+        // -------- FLOW CONTROL --------
+        addOperation("pass", new PassExpression());
+        addOperation("filter", new FilterExpression());
+    }
+}

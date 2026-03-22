@@ -1,0 +1,36 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import model.PayloadContext;
+
+import java.util.List;
+
+public class MaskExcludeExpression extends MaskExpression
+        implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "mask_exclude";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        Object evaluated =
+                evaluator.evaluate(args.get(0), data);
+
+        if (!(evaluated instanceof List<?> paths)) {
+            return payload;
+        }
+
+        applyMask(payload, paths, true); // FULL
+
+        return payload;
+    }
+}

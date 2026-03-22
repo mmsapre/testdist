@@ -1,0 +1,173 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import com.jayway.jsonpath.*;
+
+import model.PayloadContext;
+
+import javax.xml.xpath.*;
+import org.w3c.dom.*;
+
+import java.util.List;
+import java.util.Map;
+
+public class MaskIncludeExpression implements JsonLogicExpression {
+
+    private static final XPath XPATH =
+            XPathFactory.newInstance().newXPath();
+
+    @Override
+    public String key() {
+        return "mask_include";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        Object evaluated =
+                evaluator.evaluate(args.get(0), data);
+
+        if (!(evaluated instanceof List<?> paths)) {
+            return payload;
+        }
+
+        // ---------- JSON ----------
+        if (payload.hasJson()) {
+
+            DocumentContext ctx =
+                    JsonPath.parse(payload.getJson());
+
+            for (Object p : paths) {
+
+                if (p != null) {
+                    maskJsonValue(ctx, p.toString());
+                }
+            }
+
+            payload.setJson(ctx.jsonString());
+        }
+
+        // ---------- XML ----------
+        if (payload.hasXml()) {
+
+            try {
+                for (Object p : paths) {
+
+                    if (p == null) continue;
+
+                    String xpath = p.toString();
+
+                    NodeList nodes =
+                            (NodeList) XPATH.evaluate(
+                                    xpath,
+                                    payload.getXml(),
+                                    XPathConstants.NODESET);
+
+                    for (int i = 0; i < nodes.getLength(); i++) {
+                        maskXmlNode(nodes.item(i));
+                    }
+                }
+
+            } catch (Exception e) {
+                throw new JsonLogicEvaluationException(e);
+            }
+        }
+
+        return payload;
+    }
+
+    // =========================
+    // JSON MASKING (SAFE)
+    // =========================
+    private void maskJsonValue(DocumentContext ctx, String path) {
+
+        try {
+            Object value = ctx.read(path);
+
+            if (value == null) return;
+
+            // Primitive
+            if (value instanceof String ||
+                value instanceof Number ||
+                value instanceof Boolean) {
+
+                ctx.set(path, "****");
+            }
+
+            // List
+            else if (value instanceof List<?> list) {
+
+                for (int i = 0; i < list.size(); i++) {
+
+                    String indexedPath = path + "[" + i + "]";
+
+                    Object item = ctx.read(indexedPath);
+
+                    if (item instanceof String ||
+                        item instanceof Number ||
+                        item instanceof Boolean) {
+
+                        ctx.set(indexedPath, "****");
+                    }
+                    else {
+                        maskJsonValue(ctx, indexedPath);
+                    }
+                }
+            }
+
+            // Object
+            else if (value instanceof Map<?, ?> map) {
+
+                for (Object key : map.keySet()) {
+
+                    String childPath = path + "." + key;
+
+                    maskJsonValue(ctx, childPath);
+                }
+            }
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    // =========================
+    // XML MASKING (SAFE)
+    // =========================
+    private void maskXmlNode(Node node) {
+
+        if (node == null) return;
+
+        // ELEMENT NODE
+        if (node.getNodeType() == Node.ELEMENT_NODE) {
+
+            NodeList children = node.getChildNodes();
+
+            for (int i = 0; i < children.getLength(); i++) {
+
+                Node child = children.item(i);
+
+                if (child.getNodeType() == Node.TEXT_NODE) {
+
+                    String value = child.getNodeValue();
+
+                    if (value != null && !value.trim().isEmpty()) {
+                        child.setNodeValue("****");
+                    }
+                } else {
+                    // recursive
+                    maskXmlNode(child);
+                }
+            }
+        }
+
+        // TEXT NODE
+        else if (node.getNodeType() == Node.TEXT_NODE) {
+            node.setNodeValue("****");
+        }
+    }
+}

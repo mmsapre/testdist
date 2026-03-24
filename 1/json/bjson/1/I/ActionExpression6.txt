@@ -1,0 +1,91 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import model.PayloadContext;
+
+import java.util.List;
+import java.util.Map;
+
+public class ActionExpression implements JsonLogicExpression {
+
+    private MaskIncludeExpression include;
+    private MaskExcludeExpression exclude;
+
+    public ActionExpression(MaskIncludeExpression include,
+                            MaskExcludeExpression exclude) {
+        this.include = include;
+        this.exclude = exclude;
+    }
+
+    @Override
+    public String key() {
+        return "action";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        PayloadContext payload = (PayloadContext) data;
+
+        Object result =
+                evaluator.evaluate(args.get(0), data);
+
+        // ------------------------------
+        // CASE 1: DSL returns Map
+        // ------------------------------
+        if (result instanceof Map<?, ?> map) {
+
+            String action = (String) map.get("action");
+            Object fields = map.get("fields");
+
+            // PASS
+            if ("PASS".equalsIgnoreCase(action)) {
+                return payload;
+            }
+
+            // FILTER
+            if ("FILTER".equalsIgnoreCase(action)) {
+                return null;
+            }
+
+            // FULL MASK → exclude
+            if ("FULL_MASK".equalsIgnoreCase(action)) {
+
+                if (fields instanceof List<?> list) {
+                    exclude.applyMask(payload, list, true);
+                }
+
+                return payload;
+            }
+
+            // PARTIAL MASK → include
+            if ("PARTIAL_MASK".equalsIgnoreCase(action)) {
+
+                if (fields instanceof List<?> list) {
+                    include.applyMask(payload, list, false);
+                }
+
+                return payload;
+            }
+        }
+
+        // ------------------------------
+        // CASE 2: direct string
+        // ------------------------------
+        if (result instanceof String action) {
+
+            if ("PASS".equalsIgnoreCase(action)) {
+                return payload;
+            }
+
+            if ("FILTER".equalsIgnoreCase(action)) {
+                return null;
+            }
+        }
+
+        return payload;
+    }
+}

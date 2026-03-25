@@ -1,0 +1,73 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+public class WhenExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "when";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        // -------- STYLE 1: when(cond, {then, else})
+        if (args.size() == 2) {
+
+            Object condition =
+                    evaluator.evaluate(args.get(0), data);
+
+            Object block =
+                    evaluator.evaluate(args.get(1), data);
+
+            if (!(block instanceof java.util.Map<?,?> map)) {
+                return null;
+            }
+
+            if (Boolean.TRUE.equals(condition)) {
+
+                if (map.containsKey("then")) {
+                    return evaluator.evaluate(
+                            JsonLogicParser.parse(map.get("then")),
+                            data);
+                }
+
+            } else {
+
+                if (map.containsKey("else")) {
+                    return evaluator.evaluate(
+                            JsonLogicParser.parse(map.get("else")),
+                            data);
+                }
+            }
+
+            return null;
+        }
+
+        // -------- STYLE 2: multiple when/then pairs
+        int i = 0;
+
+        while (i < args.size() - 1) {
+
+            Object cond =
+                    evaluator.evaluate(args.get(i), data);
+
+            if (Boolean.TRUE.equals(cond)) {
+                return evaluator.evaluate(args.get(i + 1), data);
+            }
+
+            i += 2;
+        }
+
+        // ELSE
+        if (i < args.size()) {
+            return evaluator.evaluate(args.get(i), data);
+        }
+
+        return null;
+    }
+}

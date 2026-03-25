@@ -1,0 +1,20 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+public class ElseExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "else";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        return evaluator.evaluate(args.get(0), data);
+    }
+}

@@ -1,0 +1,52 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+
+import java.util.Objects;
+
+public class CaseExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "case";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        if (args.size() < 3) {
+            return null;
+        }
+
+        // first arg = value
+        Object value =
+                evaluator.evaluate(args.get(0), data);
+
+        int i = 1;
+
+        // iterate pairs (when, then)
+        while (i < args.size() - 1) {
+
+            Object whenVal =
+                    evaluator.evaluate(args.get(i), data);
+
+            if (Objects.equals(value, whenVal)) {
+
+                return evaluator.evaluate(
+                        args.get(i + 1), data);
+            }
+
+            i += 2;
+        }
+
+        // ELSE (last element)
+        if (i < args.size()) {
+            return evaluator.evaluate(args.get(i), data);
+        }
+
+        return null;
+    }
+}

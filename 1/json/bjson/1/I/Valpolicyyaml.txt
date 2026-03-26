@@ -1,0 +1,82 @@
+mrd:
+
+  distribution:
+
+    validation:
+
+      enabled: true
+      bypass: false
+      strategy: PRIORITY_HIGHEST_WINS
+
+      dslQueries:
+
+        ACCOUNT_BLACKLIST_LOOKUP:
+
+          tables:
+            - name: account_blacklist
+              alias: ab
+
+          columns:
+            - expr: "'FILTER'"
+              alias: result
+
+            - expr: ab.priority
+              alias: priority
+
+          where:
+            - column: ab.account_no
+              operator: "="
+              param: accountNo
+
+
+        EU_SANCTION_LOOKUP:
+
+          tables:
+            - name: eu_sanction
+              alias: es
+
+          columns:
+            - expr: "'PARTIAL_MASK'"
+              alias: result
+
+            - expr: es.mask_path
+              alias: maskInclude
+
+            - expr: es.priority
+              alias: priority
+
+          where:
+            - column: es.country
+              operator: "="
+              param: country
+
+
+      policies:
+
+        ACCOUNT_BLACKLIST_POLICY:
+
+          mode: POLICY_DB
+
+          rule: >
+            {
+              "and":[
+                {"==":[{"var":"$.Account.status"},"ACTIVE"]},
+                {"dsl":"ACCOUNT_BLACKLIST_LOOKUP"}
+              ]
+            }
+
+
+        INDIA_ACCOUNT_FILTER:
+
+          mode: JSON_PATH
+
+          paths:
+            - "$.Account.country == 'IN'"
+
+
+        XML_EU_MASK:
+
+          mode: XPATH
+
+          paths:
+            - "/Account/Country='DE'"

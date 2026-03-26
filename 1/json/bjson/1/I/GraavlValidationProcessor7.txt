@@ -1,0 +1,59 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.logic.PolicyEngine;
+import com.acme.graavl.policy.PolicyDecision;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.Map;
+
+public class GraavlValidationProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final PolicyEngine policyEngine;
+
+    public GraavlValidationProcessor(PolicyEngine policyEngine) {
+        this.policyEngine = policyEngine;
+    }
+
+    @Override
+    public PipelineRecord processRecord(
+            Record<PipelineRecord> record) throws Exception {
+
+        PipelineRecord r = record.getPayload();
+
+        PolicyDecision decision =
+                policyEngine.evaluate(
+                        Map.of(
+                            "payload", r.getPayload(),
+                            "payloadType", r.getPayloadType()
+                        ));
+
+        if (decision == null)
+            return r;
+
+        switch (decision.getAction()) {
+
+            case "PASS":
+                return r;
+
+            case "FILTER":
+                throw new RuntimeException(
+                        "Record filtered by policy");
+
+            case "FULL_MASK":
+                r.applyFullMask(decision.getMaskExclude());
+                return r;
+
+            case "PARTIAL_MASK":
+                r.applyPartialMask(
+                        decision.getMaskInclude(),
+                        decision.getMaskExclude());
+                return r;
+        }
+
+        return r;
+    }
+}

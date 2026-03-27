@@ -1,0 +1,55 @@
+package com.acme.graavl.connector;
+
+import com.acme.graavl.core.*;
+import com.acme.graavl.dsl.*;
+import com.acme.graavl.logic.*;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.*;
+
+public class GraavlConnectorProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final DslParameterBinder binder;
+    private final DslSqlBuilder builder;
+    private final DslQueryExecutor executor;
+    private final DslQueryConfig config;
+
+    public GraavlConnectorProcessor(DslParameterBinder binder,
+                                     DslSqlBuilder builder,
+                                     DslQueryExecutor executor,
+                                     DslQueryConfig config) {
+
+        this.binder = binder;
+        this.builder = builder;
+        this.executor = executor;
+        this.config = config;
+    }
+
+    @Override
+    public PipelineRecord processRecord(
+            Record<PipelineRecord> record) throws Exception {
+
+        PipelineRecord input = record.getPayload();
+
+        PolicyExecutionContext ctx = new PolicyExecutionContext();
+        ctx.setPayload(input.getPayload());
+        ctx.setXmlDocument(input.getXml());
+        ctx.setContextMap(new HashMap<>());
+
+        Map<String,Object> params =
+                binder.bind(config.getWhere(), ctx);
+
+        String sql =
+                builder.build(config, params);
+
+        List<Map<String,Object>> result =
+                executor.execute(sql, config.getWhere(), params);
+
+        input.setConnectorData(result);
+
+        return input;
+    }
+}

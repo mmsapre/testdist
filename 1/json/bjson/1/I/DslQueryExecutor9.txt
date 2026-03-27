@@ -1,0 +1,45 @@
+package com.acme.graavl.dsl;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.*;
+
+public class DslQueryExecutor {
+
+    private final DataSource ds;
+    private final PreparedStatementBinder binder;
+
+    public DslQueryExecutor(DataSource ds,
+                            PreparedStatementBinder binder) {
+        this.ds = ds;
+        this.binder = binder;
+    }
+
+    public List<Map<String,Object>> execute(String sql,
+                                            List<DslWhereConfig> where,
+                                            Map<String,Object> params) throws Exception {
+
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            binder.bind(ps, where, params);
+
+            ResultSet rs = ps.executeQuery();
+
+            List<Map<String,Object>> out = new ArrayList<>();
+
+            while (rs.next()) {
+
+                Map<String,Object> row = new LinkedHashMap<>();
+
+                for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++)
+                    row.put(rs.getMetaData().getColumnLabel(i),
+                            rs.getObject(i));
+
+                out.add(row);
+            }
+
+            return out;
+        }
+    }
+}

@@ -1,0 +1,61 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.extract.*;
+import com.acme.graavl.logic.PolicyExecutionContext;
+
+import java.util.*;
+
+public class DslParameterBinder {
+
+    private final JsonPathExtractor json;
+    private final XPathExtractor xpath;
+
+    public DslParameterBinder(JsonPathExtractor json,
+                              XPathExtractor xpath) {
+        this.json = json;
+        this.xpath = xpath;
+    }
+
+    public Map<String,Object> bind(List<DslWhereConfig> where,
+                                  PolicyExecutionContext ctx) throws Exception {
+
+        Map<String,Object> params = new LinkedHashMap<>();
+
+        for (DslWhereConfig w : where) {
+
+            List<Object> values = extract(w, ctx);
+
+            boolean isList = values.size() > 1;
+
+            if (isList)
+                w.setResolvedOperator("IN");
+            else
+                w.setResolvedOperator(w.getOperator());
+
+            if ("IN".equalsIgnoreCase(w.getResolvedOperator()))
+                params.put(w.getParam(), values);
+            else
+                params.put(w.getParam(),
+                        values.isEmpty() ? null : values.get(0));
+        }
+
+        return params;
+    }
+
+    private List<Object> extract(DslWhereConfig w,
+                                PolicyExecutionContext ctx) throws Exception {
+
+        switch (w.getExtractor()) {
+
+            case "JSONPATH":
+                return json.extract(ctx.getPayload(), w.getPath());
+
+            case "XPATH":
+                return xpath.extract(ctx.getXmlDocument(), w.getPath());
+
+            default:
+                throw new RuntimeException("Invalid extractor");
+        }
+    }
+}

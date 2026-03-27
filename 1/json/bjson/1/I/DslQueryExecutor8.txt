@@ -1,0 +1,264 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+import com.acme.graavl.extract.JsonPathExtractor;
+import com.acme.graavl.extract.XPathExtractor;
+import com.acme.graavl.logic.PolicyExecutionContext;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.util.*;
+
+public class DslQueryExecutor {
+
+    private final Map<String, DataSource> dataSources;
+    private final JsonPathExtractor jsonExtractor;
+    private final XPathExtractor xpathExtractor;
+
+    public DslQueryExecutor(Map<String, DataSource> dataSources,
+                            JsonPathExtractor jsonExtractor,
+                            XPathExtractor xpathExtractor) {
+        this.dataSources = dataSources;
+        this.jsonExtractor = jsonExtractor;
+        this.xpathExtractor = xpathExtractor;
+    }
+
+    /*
+     ===========================
+     MAIN EXECUTION METHOD
+     ===========================
+     */
+    public List<Map<String,Object>> execute(DslQueryConfig config,
+                                            PolicyExecutionContext ctx) throws Exception {
+
+        // 1. Extract + bind parameters
+        Map<String,Object> params = bindParameters(config, ctx);
+
+        // 2. Build SQL
+        String sql = buildSql(config, params);
+
+        // 3. Execute query
+        DataSource ds = dataSources.get(config.getDatasource());
+
+        return runQuery(ds, sql, config, params);
+    }
+
+    /*
+     ===========================
+     PARAMETER BINDING
+     ===========================
+     */
+    private Map<String,Object> bindParameters(DslQueryConfig config,
+                                              PolicyExecutionContext ctx) throws Exception {
+
+        Map<String,Object> params = new LinkedHashMap<>();
+
+        for (DslWhereConfig w : config.getWhere()) {
+
+            List<Object> values = extractValues(w, ctx);
+
+            if ("IN".equalsIgnoreCase(w.getOperator())) {
+                params.put(w.getParam(), values);
+            } else {
+                params.put(w.getParam(),
+                        values.isEmpty() ? null : values.get(0));
+            }
+        }
+
+        return params;
+    }
+
+    /*
+     ===========================
+     VALUE EXTRACTION (YOUR METHOD)
+     ===========================
+     */
+    private List<Object> extractValues(DslWhereConfig w,
+                                      PolicyExecutionContext ctx) throws Exception {
+
+        if (!"PAYLOAD".equalsIgnoreCase(w.getSource())) {
+            throw new IllegalArgumentException("Only PAYLOAD supported here");
+        }
+
+        switch (w.getExtractor()) {
+
+            case "JSONPATH":
+                return jsonExtractor.extract(
+                        ctx.getPayload(),
+                        w.getPath());
+
+            case "XPATH":
+                return xpathExtractor.extract(
+                        ctx.getXmlDocument(),
+                        w.getPath());
+
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported extractor: " + w.getExtractor());
+        }
+    }
+
+    /*
+     ===========================
+     SQL BUILDER
+     ===========================
+     */
+    private String buildSql(DslQueryConfig config,
+                            Map<String,Object> params) {
+
+        StringBuilder sql = new StringBuilder();
+
+        // SELECT
+        sql.append("SELECT ");
+
+        List<String> cols = new ArrayList<>();
+        for (DslColumnConfig c : config.getColumns()) {
+            cols.add(c.getExpr() + " AS " + c.getAlias());
+        }
+        sql.append(String.join(", ", cols));
+
+        // FROM
+        DslTableConfig table = config.getTables().get(0);
+        sql.append(" FROM ")
+           .append(table.getName())
+           .append(" ")
+           .append(table.getAlias());
+
+        // WHERE
+        if (config.getWhere() != null && !config.getWhere().isEmpty()) {
+
+            sql.append(" WHERE ");
+
+            List<String> predicates = new ArrayList<>();
+
+            for (DslWhereConfig w : config.getWhere()) {
+
+                Object val = params.get(w.getParam());
+
+                if ("IN".equalsIgnoreCase(w.getOperator()) &&
+                        val instanceof List<?> list) {
+
+                    String placeholders = String.join(", ",
+                            Collections.nCopies(list.size(), "?"));
+
+                    predicates.add(w.getColumn() + " IN (" + placeholders + ")");
+
+                } else {
+                    predicates.add(w.getColumn() + " " + w.getOperator() + " ?");
+                }
+            }
+
+            sql.append(String.join(" AND ", predicates));
+        }
+
+        return sql.toString();
+    }
+
+    /*
+     ===========================
+     QUERY EXECUTION
+     ===========================
+     */
+    private List<Map<String,Object>> runQuery(DataSource ds,
+                                             String sql,
+                                             DslQueryConfig config,
+                                             Map<String,Object> params) throws Exception {
+
+        try (Connection conn = ds.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            int index = 1;
+
+            for (DslWhereConfig w : config.getWhere()) {
+
+                Object val = params.get(w.getParam());
+
+                if (val instanceof List<?> list) {
+
+                    for (Object v : list) {
+                        setParam(ps, index++, v, w.getType());
+                    }
+
+                } else {
+
+                    setParam(ps, index++, val, w.getType());
+                }
+            }
+
+            ResultSet rs = ps.executeQuery();
+
+            List<Map<String,Object>> result = new ArrayList<>();
+
+            while (rs.next()) {
+
+                Map<String,Object> row = new LinkedHashMap<>();
+
+                for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
+
+                    row.put(
+                            rs.getMetaData().getColumnLabel(i),
+                            rs.getObject(i)
+                    );
+                }
+
+                result.add(row);
+            }
+
+            return result;
+        }
+    }
+
+    /*
+     ===========================
+     TYPE-SAFE PARAM BINDING
+     ===========================
+     */
+    private void setParam(PreparedStatement ps,
+                          int index,
+                          Object value,
+                          DslParamType type) throws SQLException {
+
+        if (value == null) {
+            ps.setObject(index, null);
+            return;
+        }
+
+        switch (type) {
+
+            case STRING:
+                ps.setString(index, value.toString());
+                break;
+
+            case INTEGER:
+                ps.setInt(index, Integer.parseInt(value.toString()));
+                break;
+
+            case LONG:
+                ps.setLong(index, Long.parseLong(value.toString()));
+                break;
+
+            case DECIMAL:
+                ps.setBigDecimal(index,
+                        new java.math.BigDecimal(value.toString()));
+                break;
+
+            case BOOLEAN:
+                ps.setBoolean(index,
+                        Boolean.parseBoolean(value.toString()));
+                break;
+
+            case DATE:
+                ps.setDate(index,
+                        java.sql.Date.valueOf(value.toString()));
+                break;
+
+            case TIMESTAMP:
+                ps.setTimestamp(index,
+                        java.sql.Timestamp.valueOf(value.toString()));
+                break;
+
+            default:
+                ps.setObject(index, value);
+        }
+    }
+}

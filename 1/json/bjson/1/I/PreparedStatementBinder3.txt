@@ -1,0 +1,59 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+
+import java.sql.*;
+import java.util.List;
+import java.util.Map;
+
+public class PreparedStatementBinder {
+
+    public int bind(PreparedStatement ps,
+                    List<DslWhereConfig> where,
+                    Map<String,Object> params) throws SQLException {
+
+        int index = 1;
+
+        for (DslWhereConfig w : where) {
+
+            Object val = params.get(w.getParam());
+
+            if (val instanceof List<?> list) {
+
+                for (Object v : list)
+                    index = set(ps, index, v, w.getType());
+
+            } else {
+
+                index = set(ps, index, val, w.getType());
+            }
+        }
+
+        return index;
+    }
+
+    private int set(PreparedStatement ps,
+                    int idx,
+                    Object val,
+                    DslParamType type) throws SQLException {
+
+        if (val == null) {
+            ps.setObject(idx, null);
+            return idx + 1;
+        }
+
+        switch (type) {
+
+            case STRING -> ps.setString(idx, val.toString());
+            case INTEGER -> ps.setInt(idx, Integer.parseInt(val.toString()));
+            case LONG -> ps.setLong(idx, Long.parseLong(val.toString()));
+            case DECIMAL -> ps.setBigDecimal(idx, new java.math.BigDecimal(val.toString()));
+            case BOOLEAN -> ps.setBoolean(idx, Boolean.parseBoolean(val.toString()));
+            case DATE -> ps.setDate(idx, Date.valueOf(val.toString()));
+            case TIMESTAMP -> ps.setTimestamp(idx, Timestamp.valueOf(val.toString()));
+            default -> ps.setObject(idx, val);
+        }
+
+        return idx + 1;
+    }
+}

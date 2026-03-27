@@ -1,0 +1,54 @@
+package com.acme.graavl.dsl;
+
+import com.acme.graavl.config.*;
+
+import java.util.*;
+
+public class DslSqlBuilder {
+
+    public String build(DslQueryConfig config,
+                        Map<String,Object> params) {
+
+        StringBuilder sql = new StringBuilder("SELECT ");
+
+        List<String> cols = new ArrayList<>();
+        for (DslColumnConfig c : config.getColumns())
+            cols.add(c.getExpr() + " AS " + c.getAlias());
+
+        sql.append(String.join(",", cols));
+
+        DslTableConfig t = config.getTables().get(0);
+
+        sql.append(" FROM ").append(t.getName()).append(" ").append(t.getAlias());
+
+        if (config.getWhere() != null) {
+
+            sql.append(" WHERE ");
+
+            List<String> p = new ArrayList<>();
+
+            for (DslWhereConfig w : config.getWhere()) {
+
+                String op = w.getResolvedOperator();
+
+                Object val = params.get(w.getParam());
+
+                if ("IN".equalsIgnoreCase(op) && val instanceof List<?> list) {
+
+                    String ph = String.join(",",
+                            Collections.nCopies(list.size(), "?"));
+
+                    p.add(w.getColumn() + " IN (" + ph + ")");
+
+                } else {
+
+                    p.add(w.getColumn() + " " + op + " ?");
+                }
+            }
+
+            sql.append(String.join(" AND ", p));
+        }
+
+        return sql.toString();
+    }
+}

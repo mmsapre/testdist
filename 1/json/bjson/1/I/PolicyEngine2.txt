@@ -1,0 +1,21 @@
+public class PolicyEngine {
+
+    private final Map<String, JsonLogicNode> rules;
+    private final JsonLogicEvaluator evaluator;
+    private final PolicyDecisionMapper mapper;
+    private final PolicyAggregator aggregator;
+
+    public PolicyDecision evaluate(PolicyExecutionContext ctx) throws Exception {
+
+        List<PolicyDecision> decisions = new ArrayList<>();
+
+        for (JsonLogicNode node : rules.values()) {
+
+            Object result = evaluator.evaluate(node, ctx);
+
+            decisions.add(mapper.map(result));
+        }
+
+        return aggregator.aggregate(decisions);
+    }
+}

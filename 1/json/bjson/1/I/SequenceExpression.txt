@@ -1,0 +1,26 @@
+public class SequenceExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "seq";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        Object result = null;
+
+        for (int i = 0; i < args.size(); i++) {
+            result = evaluator.evaluate(args.get(i), data);
+
+            // short circuit FILTER
+            if ("FILTER".equals(result))
+                return result;
+        }
+
+        return result;
+    }
+}

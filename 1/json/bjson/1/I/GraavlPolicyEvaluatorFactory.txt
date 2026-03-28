@@ -1,0 +1,15 @@
+public class GraavlPolicyEvaluatorFactory {
+
+    public JsonLogicEvaluator create(QueryDslExecutor executor) {
+
+        return new JsonLogicEvaluator(List.of(
+
+                new ExtractJsonPathExpression(new JsonPathExtractor()),
+                new ContextExpression(),
+                new DslExpression(executor),
+                new MaskExpression(),
+                new SequenceExpression()
+
+        ));
+    }
+}

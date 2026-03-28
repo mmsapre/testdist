@@ -1,0 +1,86 @@
+package com.acme.graavl.logic.expressions;
+
+import com.acme.graavl.extract.JsonPathExtractor;
+import com.acme.graavl.extract.XPathExtractor;
+
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.evaluator.*;
+
+import org.w3c.dom.Document;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.util.Map;
+
+public class ExtractExpression implements JsonLogicExpression {
+
+    private final JsonPathExtractor jsonExtractor;
+    private final XPathExtractor xpathExtractor;
+
+    public ExtractExpression(JsonPathExtractor jsonExtractor,
+                             XPathExtractor xpathExtractor) {
+        this.jsonExtractor = jsonExtractor;
+        this.xpathExtractor = xpathExtractor;
+    }
+
+    @Override
+    public String key() {
+        return "extract";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        try {
+            Map<String,Object> root = (Map<String,Object>) data;
+
+            String key = evaluator.evaluate(args.get(0), data).toString();
+            String path = evaluator.evaluate(args.get(1), data).toString();
+
+            String payload = root.get("payload").toString();
+
+            Object val;
+
+            if (isJson(payload)) {
+
+                val = jsonExtractor.extract(payload, path);
+
+            } else if (isXml(payload)) {
+
+                Document doc = parseXml(payload);
+
+                val = xpathExtractor.extract(doc, path);
+
+            } else {
+
+                throw new RuntimeException("Unsupported payload format");
+            }
+
+            Map<String,Object> ctx =
+                    (Map<String,Object>) root.get("ctx");
+
+            ctx.put(key, val);
+
+            return val;
+
+        } catch (Exception e) {
+            throw new JsonLogicEvaluationException(e);
+        }
+    }
+
+    private boolean isJson(String payload) {
+        return payload.trim().startsWith("{");
+    }
+
+    private boolean isXml(String payload) {
+        return payload.trim().startsWith("<");
+    }
+
+    private Document parseXml(String xml) throws Exception {
+        return DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new java.io.ByteArrayInputStream(xml.getBytes()));
+    }
+}

@@ -1,0 +1,89 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.core.PipelineRecord;
+import com.acme.graavl.logic.PolicyExecutionContext;
+import com.acme.graavl.policy.PolicyDecision;
+import com.acme.graavl.policy.PolicyEngine;
+import com.acme.graavl.mask.GraavlMaskEngine;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+import org.jeasy.batch.core.record.Record;
+
+import java.util.HashMap;
+
+public class GraavlValidationProcessor
+        implements RecordProcessor<PipelineRecord, PipelineRecord> {
+
+    private final PolicyEngine policyEngine;
+    private final GraavlMaskEngine maskEngine;
+
+    public GraavlValidationProcessor(PolicyEngine policyEngine,
+                                     GraavlMaskEngine maskEngine) {
+        this.policyEngine = policyEngine;
+        this.maskEngine = maskEngine;
+    }
+
+    @Override
+    public PipelineRecord processRecord(
+            Record<PipelineRecord> record) throws Exception {
+
+        PipelineRecord input = record.getPayload();
+
+        /*
+         ===========================
+         1. BUILD CONTEXT
+         ===========================
+         */
+        PolicyExecutionContext ctx = new PolicyExecutionContext();
+
+        ctx.setPayload(input.getPayload());
+        ctx.setXmlDocument(input.getXml());
+        ctx.setContextMap(new HashMap<>());
+
+        /*
+         ===========================
+         2. EXECUTE POLICY ENGINE
+         ===========================
+         */
+        PolicyDecision decision = policyEngine.evaluate(ctx);
+
+        /*
+         ===========================
+         3. APPLY DECISION
+         ===========================
+         */
+        if (decision == null || decision.getAction() == null) {
+            return input; // default PASS
+        }
+
+        switch (decision.getAction()) {
+
+            case "FILTER":
+                throw new RuntimeException("Filtered by policy");
+
+            case "FULL_MASK":
+
+                input.setPayload(
+                        maskEngine.applyFullMask(
+                                input.getPayload(),
+                                decision.getExclude()
+                        )
+                );
+                return input;
+
+            case "PARTIAL_MASK":
+
+                input.setPayload(
+                        maskEngine.applyPartialMask(
+                                input.getPayload(),
+                                decision.getInclude()
+                        )
+                );
+                return input;
+
+            case "PASS":
+            default:
+                return input;
+        }
+    }
+}

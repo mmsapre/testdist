@@ -1,0 +1,20 @@
+public class ContextExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "ctx";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Map<String,Object> root = (Map<String,Object>) data;
+        Map<String,Object> ctx = (Map<String,Object>) root.get("ctx");
+
+        String key = evaluator.evaluate(args.get(0), data).toString();
+
+        return ctx.get(key);
+    }
+}

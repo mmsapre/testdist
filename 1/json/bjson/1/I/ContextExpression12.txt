@@ -1,0 +1,37 @@
+package com.acme.graavl.logic.expressions;
+
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.evaluator.*;
+
+import java.util.Map;
+
+public class ContextExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "ctx";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        if (!(data instanceof Map))
+            throw new JsonLogicEvaluationException("Data must be Map");
+
+        Map<String,Object> root = (Map<String,Object>) data;
+
+        Object ctxObj = root.get("ctx");
+
+        if (!(ctxObj instanceof Map))
+            return null;
+
+        Map<String,Object> ctx = (Map<String,Object>) ctxObj;
+
+        String key = evaluator.evaluate(args.get(0), data).toString();
+
+        return ctx.get(key);
+    }
+}

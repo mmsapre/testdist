@@ -1,0 +1,182 @@
+mrd:
+
+  distribution:
+
+    validation:
+
+      enabled: true
+      bypass: false
+      strategy: PRIORITY_HIGHEST_WINS
+
+      dslQueries:
+
+        GRID_LOOKUP:
+
+          tables:
+            - name: policy_grid
+              alias: pg
+
+          columns:
+            - expr: pg.result
+              alias: result
+
+            - expr: pg.priority
+              alias: priority
+
+          where:
+            - column: pg.grid
+              operator: "="
+              param: grid
+              source: CONTEXT
+              key: grid
+              type: STRING
+
+
+        ACCOUNT_LOOKUP:
+
+          tables:
+            - name: policy_account
+              alias: pa
+
+          columns:
+            - expr: pa.result
+              alias: result
+
+            - expr: pa.priority
+              alias: priority
+
+          where:
+            - column: pa.account_no
+              operator: "="
+              param: accountNo
+              source: CONTEXT
+              key: accountNo
+              type: STRING
+
+            - column: pa.account_type
+              operator: "="
+              param: accountType
+              source: CONTEXT
+              key: accountType
+              type: STRING
+
+            - column: pa.domain
+              operator: "="
+              param: domain
+              source: CONTEXT
+              key: domain
+              type: STRING
+
+
+      policies:
+
+        DISTRIBUTION_POLICY:
+
+          mode: POLICY_DB
+
+          rule: >
+            {
+              "seq":[
+
+                { "extract": ["accountNo", "$.tags.accountNumber"] },
+                { "extract": ["accountType", "$.tags.accountType"] },
+                { "extract": ["grid", "$.payload.grid"] },
+                { "extract": ["domain", "$.tags.domain"] },
+
+                {
+                  "if":[
+                    {
+                      "in":[
+                        { "ctx":"domain" },
+                        ["GHSS","GCS"]
+                      ]
+                    },
+                    "PASS",
+                    "FILTER"
+                  ]
+                },
+
+                {
+                  "if":[
+                    {
+                      "==":[
+                        { "dsl":"GRID_LOOKUP" },
+                        "FILTER"
+                      ]
+                    },
+                    "FILTER",
+                    "PASS"
+                  ]
+                },
+
+                {
+                  "case":[
+
+                    {
+                      "when":{
+                        "==":[
+                          { "dsl":"ACCOUNT_LOOKUP" },
+                          "FILTER"
+                        ]
+                      },
+                      "then":"FILTER"
+                    },
+
+                    {
+                      "when":{
+                        "==":[
+                          { "dsl":"ACCOUNT_LOOKUP" },
+                          "FULL_MASK"
+                        ]
+                      },
+                      "then":{
+                        "mask":{
+                          "type":"FULL_MASK",
+                          "exclude":[
+                            "$.payload.accountNumber"
+                          ]
+                        }
+                      }
+                    },
+
+                    {
+                      "when":{
+                        "==":[
+                          { "dsl":"ACCOUNT_LOOKUP" },
+                          "PARTIAL_MASK"
+                        ]
+                      },
+                      "then":{
+                        "mask":{
+                          "type":"PARTIAL_MASK",
+                          "include":[
+                            "$.payload.balance"
+                          ]
+                        }
+                      }
+                    },
+
+                    {
+                      "else":"PASS"
+                    }
+                  ]
+                }
+
+              ]
+            }
+
+
+        INDIA_FILTER_POLICY:
+
+          mode: JSON_PATH
+
+          paths:
+            - "$.Account.country == 'IN'"
+
+
+        XML_EU_POLICY:
+
+          mode: XPATH
+
+          paths:
+            - "/Account/Country='DE'"

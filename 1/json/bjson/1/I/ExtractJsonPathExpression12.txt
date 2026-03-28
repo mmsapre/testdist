@@ -1,0 +1,42 @@
+public class ExtractJsonPathExpression implements JsonLogicExpression {
+
+    private final JsonPathExtractor extractor;
+
+    public ExtractJsonPathExpression(JsonPathExtractor extractor) {
+        this.extractor = extractor;
+    }
+
+    @Override
+    public String key() {
+        return "extract_jsonpath";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        try {
+            Map<String,Object> root = (Map<String,Object>) data;
+
+            String key = evaluator.evaluate(args.get(0), data).toString();
+            String path = evaluator.evaluate(args.get(1), data).toString();
+
+            String payload = root.get("payload").toString();
+
+            Object val = extractor.extract(payload, path);
+
+            Map<String,Object> ctx =
+                    (Map<String,Object>) root.computeIfAbsent("ctx",
+                            k -> new java.util.HashMap<>());
+
+            ctx.put(key, val);
+
+            return val;
+
+        } catch (Exception e) {
+            throw new JsonLogicEvaluationException(e);
+        }
+    }
+}

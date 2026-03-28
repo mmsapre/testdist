@@ -1,0 +1,44 @@
+package com.acme.graavl.logic.expressions;
+
+import com.acme.graavl.logic.PolicyExecutionContext;
+import com.acme.graavl.extract.JsonPathExtractor;
+
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.evaluator.*;
+
+public class ExtractJsonPathExpression implements JsonLogicExpression {
+
+    private final JsonPathExtractor extractor;
+
+    public ExtractJsonPathExpression(JsonPathExtractor extractor) {
+        this.extractor = extractor;
+    }
+
+    @Override
+    public String key() {
+        return "extract_jsonpath";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        PolicyExecutionContext ctx = (PolicyExecutionContext) data;
+
+        try {
+            String key = evaluator.evaluate(args.get(0), data).toString();
+            String path = evaluator.evaluate(args.get(1), data).toString();
+
+            Object value = extractor.extract(ctx.getPayload(), path);
+
+            ctx.getContextMap().put(key, value);
+
+            return value;
+
+        } catch (Exception e) {
+            throw new JsonLogicEvaluationException(e);
+        }
+    }
+}

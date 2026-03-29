@@ -1,0 +1,47 @@
+public class DslExpression implements JsonLogicExpression {
+
+    private final QueryDslExecutor executor;
+
+    public DslExpression(QueryDslExecutor executor) {
+        this.executor = executor;
+    }
+
+    @Override
+    public String key() {
+        return "dsl";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        String key = evaluator.evaluate(args.get(0), data).toString();
+
+        Map<String,Object> root = (Map<String,Object>) data;
+        Map<String,Object> ctx = (Map<String,Object>) root.get("ctx");
+
+        // 🔥 cache
+        if (ctx.containsKey("dsl_" + key)) {
+            return ((Map<?,?>) ctx.get("dsl_" + key)).get("result");
+        }
+
+        try {
+            Object result = executor.execute(key, data);
+
+            if (result instanceof java.util.List<?> list && !list.isEmpty()) {
+
+                Map<String,Object> row = (Map<String,Object>) list.get(0);
+
+                ctx.put("dsl_" + key, row);
+
+                return row.get("result");
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return null;
+    }
+}

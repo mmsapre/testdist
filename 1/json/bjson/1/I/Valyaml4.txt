@@ -1,0 +1,114 @@
+rule: >
+  {
+    "seq":[
+
+      /* =========================
+         EXTRACTION
+         ========================= */
+
+      {
+        "extract": [
+          "accountNo",
+          {
+            "jsonPath":"$.tags.accountNumber",
+            "xPath":"/Account/mrdAccountId/text()"
+          }
+        ]
+      },
+
+      {
+        "extract": [
+          "referenceName",
+          {
+            "jsonPath":"$.tags.referenceName",
+            "xPath":"/Account/reference/name/text()"
+          }
+        ]
+      },
+
+      {
+        "extract": [
+          "referenceValue",
+          {
+            "jsonPath":"$.tags.referenceValue",
+            "xPath":"/Account/reference/value/text()"
+          }
+        ]
+      },
+
+      {
+        "extract": [
+          "accountType",
+          {
+            "jsonPath":"$.tags.accountType",
+            "xPath":"/Account/partyRole/roleType/text()"
+          }
+        ]
+      },
+
+      /* =========================
+         GCS + SECURITIES
+         ========================= */
+
+      {
+        "if":[
+          {
+            "and":[
+
+              {
+                "or":[
+                  { "in":[ "GCS", { "ctx":"referenceName" } ] },
+                  { "in":[ "GCS", { "ctx":"referenceValue" } ] }
+                ]
+              },
+
+              {
+                "==":[
+                  { "ctx":"accountType" },
+                  "SECURITIES"
+                ]
+              }
+
+            ]
+          },
+
+          { "dsl":"GCS_SECURITIES_LOOKUP" },
+
+          "PASS"
+        ]
+      },
+
+      /* =========================
+         GHSS + CASH
+         ========================= */
+
+      {
+        "if":[
+          {
+            "and":[
+
+              {
+                "or":[
+                  { "in":[ "GHSS", { "ctx":"referenceName" } ] },
+                  { "in":[ "GHSS", { "ctx":"referenceValue" } ] }
+                ]
+              },
+
+              {
+                "==":[
+                  { "ctx":"accountType" },
+                  "CASH"
+                ]
+              }
+
+            ]
+          },
+
+          { "dsl":"GHSS_CASH_LOOKUP" },
+
+          "PASS"
+        ]
+      }
+
+    ]
+  }

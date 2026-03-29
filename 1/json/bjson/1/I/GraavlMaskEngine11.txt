@@ -1,0 +1,61 @@
+package com.acme.graavl.mask;
+
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.DocumentContext;
+
+import java.util.List;
+import java.util.Map;
+
+public class GraavlMaskEngine {
+
+    public String apply(String json, Map<String,Object> maskWrapper) {
+
+        Map<String,Object> mask =
+                (Map<String,Object>) maskWrapper.get("mask");
+
+        String type = (String) mask.get("type");
+
+        DocumentContext ctx = JsonPath.parse(json);
+
+        if ("FULL_MASK".equals(type)) {
+
+            // mask everything
+            ctx.map("$..*", (val, conf) -> maskValue(val));
+
+            // restore excluded
+            List<String> exclude = (List<String>) mask.get("exclude");
+
+            if (exclude != null) {
+                for (String path : exclude) {
+
+                    Object original = JsonPath.read(json, path);
+
+                    ctx.set(path, original);
+                }
+            }
+        }
+
+        else if ("PARTIAL_MASK".equals(type)) {
+
+            List<String> include = (List<String>) mask.get("include");
+
+            if (include != null) {
+                for (String path : include) {
+
+                    ctx.map(path, (val, conf) -> maskValue(val));
+                }
+            }
+        }
+
+        return ctx.jsonString();
+    }
+
+    private Object maskValue(Object val) {
+
+        if (val == null) return null;
+
+        if (val instanceof Number) return 0;
+
+        return "****";
+    }
+}

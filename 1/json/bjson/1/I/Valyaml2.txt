@@ -1,0 +1,175 @@
+mrd:
+
+  distribution:
+
+    validation:
+
+      enabled: true
+      bypass: false
+      strategy: HIGHEST_PRIORITY_WINS
+
+      dslQueries:
+
+        GRID_LOOKUP:
+
+          datasource: default
+
+          tables:
+            - name: policy_grid
+              alias: pg
+
+          columns:
+            - expr: pg.result
+              alias: result
+
+            - expr: pg.priority
+              alias: priority
+
+          where:
+            - column: pg.grid
+              operator: "="
+              key: grid
+              source: CONTEXT
+
+
+        ACCOUNT_LOOKUP:
+
+          datasource: default
+
+          tables:
+            - name: policy_account
+              alias: pa
+
+          columns:
+            - expr: pa.result
+              alias: result
+
+            - expr: pa.priority
+              alias: priority
+
+          where:
+            - column: pa.account_no
+              operator: "="
+              key: accountNo
+              source: CONTEXT
+
+            - column: pa.account_type
+              operator: "="
+              key: accountType
+              source: CONTEXT
+
+            - column: pa.domain
+              operator: "="
+              key: domain
+              source: CONTEXT
+
+
+      policies:
+
+        DISTRIBUTION_POLICY:
+
+          mode: POLICY_DB
+
+          rule: >
+            {
+              "seq":[
+
+                {
+                  "if":[
+                    {
+                      "in":[
+                        { "ctx":"domain" },
+                        ["GHSS","GCS"]
+                      ]
+                    },
+                    "PASS",
+                    "FILTER"
+                  ]
+                },
+
+                {
+                  "if":[
+                    {
+                      "==":[
+                        { "ctx":"GRID_LOOKUP.result" },
+                        "FILTER"
+                      ]
+                    },
+                    "FILTER",
+                    "PASS"
+                  ]
+                },
+
+                {
+                  "case":[
+
+                    {
+                      "when":{
+                        "==":[
+                          { "ctx":"ACCOUNT_LOOKUP.result" },
+                          "FILTER"
+                        ]
+                      },
+                      "then":"FILTER"
+                    },
+
+                    {
+                      "when":{
+                        "==":[
+                          { "ctx":"ACCOUNT_LOOKUP.result" },
+                          "FULL_MASK"
+                        ]
+                      },
+                      "then":{
+                        "mask":{
+                          "type":"FULL_MASK",
+                          "exclude":[
+                            "$.payload.accountNumber"
+                          ]
+                        }
+                      }
+                    },
+
+                    {
+                      "when":{
+                        "==":[
+                          { "ctx":"ACCOUNT_LOOKUP.result" },
+                          "PARTIAL_MASK"
+                        ]
+                      },
+                      "then":{
+                        "mask":{
+                          "type":"PARTIAL_MASK",
+                          "include":[
+                            "$.payload.balance"
+                          ]
+                        }
+                      }
+                    },
+
+                    {
+                      "else":"PASS"
+                    }
+                  ]
+                }
+
+              ]
+            }
+
+
+        INDIA_FILTER_POLICY:
+
+          mode: JSON_PATH
+
+          jsonPath: "$.Account.country == 'IN'"
+
+          action: FILTER
+
+
+        XML_EU_POLICY:
+
+          mode: XPATH
+
+          xpath: "/Account/Country='DE'"
+
+          action: FILTER

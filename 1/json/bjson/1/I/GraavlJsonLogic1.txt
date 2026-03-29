@@ -1,0 +1,41 @@
+package com.acme.graavl.logic;
+
+import com.brunocesar.jsonlogic.JsonLogic;
+import com.brunocesar.jsonlogic.evaluator.JsonLogicExpression;
+
+import com.acme.graavl.logic.expressions.*;
+import com.acme.graavl.dsl.QueryDslExecutor;
+import com.acme.graavl.extract.JsonPathExtractor;
+import com.acme.graavl.extract.XPathExtractor;
+
+public class GraavlJsonLogic extends JsonLogic {
+
+    public GraavlJsonLogic(QueryDslExecutor executor,
+                           JsonPathExtractor jsonExtractor,
+                           XPathExtractor xpathExtractor) {
+
+        super();
+
+        /*
+         ===========================
+         ADD CUSTOM OPERATIONS
+         ===========================
+         */
+
+        addOperation(new ExtractExpression(jsonExtractor, xpathExtractor));
+
+        addOperation(new ContextExpression());
+
+        addOperation(new DslExpression(executor));
+
+        addOperation(new MaskExpression());
+
+        addOperation(new SequenceExpression());
+
+        /*
+         OPTIONAL: add helper ops
+         */
+        addOperation(new ContainsExpression());
+        addOperation(new ToUpperExpression());
+    }
+}

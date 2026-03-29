@@ -1,0 +1,141 @@
+mrd:
+
+  distribution:
+
+    validation:
+
+      enabled: true
+      bypass: false
+      strategy: HIGHEST_PRIORITY_WINS
+
+      dslQueries:
+
+        GRID_LOOKUP:
+          tables:
+            - name: policy_grid
+              alias: pg
+          columns:
+            - expr: pg.result
+              alias: result
+          where:
+            - column: pg.grid
+              operator: "="
+              key: grid
+              source: CONTEXT
+
+
+        ACCOUNT_LOOKUP:
+          tables:
+            - name: policy_account
+              alias: pa
+          columns:
+            - expr: pa.result
+              alias: result
+          where:
+            - column: pa.account_no
+              operator: "="
+              key: accountNo
+              source: CONTEXT
+
+            - column: pa.account_type
+              operator: "="
+              key: accountType
+              source: CONTEXT
+
+
+      policies:
+
+        DISTRIBUTION_POLICY:
+
+          mode: POLICY_DB
+
+          rule: >
+            {
+              "seq":[
+
+                /* =========================
+                   EXTRACTION (JSON + XML)
+                   ========================= */
+
+                {
+                  "extract": ["grid",
+                    {
+                      "jsonPath":"$.payload.grid",
+                      "xPath":"/Account/grid/text()"
+                    }
+                  ]
+                },
+
+                {
+                  "extract": ["accountNo",
+                    {
+                      "jsonPath":"$.tags.accountNumber",
+                      "xPath":"/Account/mrdAccountId/text()"
+                    }
+                  ]
+                },
+
+                {
+                  "extract": ["accountType",
+                    {
+                      "jsonPath":"$.tags.accountType",
+                      "xPath":"/Account/type/text()"
+                    }
+                  ]
+                },
+
+                /* =========================
+                   BUSINESS LOGIC
+                   ========================= */
+
+                {
+                  "if":[
+                    {
+                      "==":[
+                        { "dsl":"GRID_LOOKUP" },
+                        "FILTER"
+                      ]
+                    },
+                    "FILTER",
+                    "PASS"
+                  ]
+                },
+
+                {
+                  "case":[
+
+                    {
+                      "when":{
+                        "==":[
+                          { "dsl":"ACCOUNT_LOOKUP" },
+                          "FILTER"
+                        ]
+                      },
+                      "then":"FILTER"
+                    },
+
+                    {
+                      "when":{
+                        "==":[
+                          { "dsl":"ACCOUNT_LOOKUP" },
+                          "FULL_MASK"
+                        ]
+                      },
+                      "then":{
+                        "mask":{
+                          "type":"FULL_MASK",
+                          "exclude":[
+                            "$.payload.accountNumber"
+                          ]
+                        }
+                      }
+                    },
+
+                    {
+                      "else":"PASS"
+                    }
+                  ]
+                }
+
+              ]
+            }

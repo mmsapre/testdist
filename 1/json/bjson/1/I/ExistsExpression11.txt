@@ -1,0 +1,17 @@
+public class ExistsExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "exists";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Object val = evaluator.evaluate(args.get(0), data);
+
+        return val != null;
+    }
+}

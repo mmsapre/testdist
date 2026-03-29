@@ -1,0 +1,17 @@
+public class ToLowerExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "lower";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Object val = evaluator.evaluate(args.get(0), data);
+
+        return val == null ? null : val.toString().toLowerCase();
+    }
+}

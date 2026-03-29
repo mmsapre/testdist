@@ -1,0 +1,225 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.adapter.PayloadAdapter;
+import com.acme.graavl.dsl.QueryDslExecutor;
+import com.acme.graavl.extract.*;
+
+import com.brunocesar.jsonlogic.evaluator.JsonLogicEvaluator;
+
+import java.util.*;
+
+public class GraavlValidationProcessor {
+
+    private final JsonLogicEvaluator evaluator;
+    private final QueryDslExecutor dslExecutor;
+
+    private final JsonPathExtractor jsonExtractor;
+    private final XPathExtractor xpathExtractor;
+
+    private final MrdValidationConfig config;
+
+    public GraavlValidationProcessor(JsonLogicEvaluator evaluator,
+                                     QueryDslExecutor dslExecutor,
+                                     MrdValidationConfig config,
+                                     JsonPathExtractor jsonExtractor,
+                                     XPathExtractor xpathExtractor) {
+
+        this.evaluator = evaluator;
+        this.dslExecutor = dslExecutor;
+        this.config = config;
+        this.jsonExtractor = jsonExtractor;
+        this.xpathExtractor = xpathExtractor;
+    }
+
+    public Object process(String payload) throws Exception {
+
+        if (!config.isEnabled()) return "PASS";
+        if (config.isBypass()) return "PASS";
+
+        Map<String,Object> data = PayloadAdapter.adapt(payload);
+        Map<String,Object> ctx = (Map<String,Object>) data.get("ctx");
+
+        /*
+         ===========================
+         1. EXTRACT FROM POLICIES
+         ===========================
+         */
+        for (MrdPolicyConfig policy : config.getPolicies().values()) {
+
+            extract(policy, data, ctx);
+        }
+
+        /*
+         ===========================
+         2. EXECUTE DSL (ALL CONFIG)
+         ===========================
+         */
+        for (String key : config.getDslQueries().keySet()) {
+
+            Object result = dslExecutor.execute(key, data);
+
+            // normalize → store first row
+            if (result instanceof List<?> list && !list.isEmpty()) {
+                ctx.put(key, list.get(0));
+            } else {
+                ctx.put(key, null);
+            }
+        }
+
+        /*
+         ===========================
+         3. EVALUATE POLICIES
+         ===========================
+         */
+        List<Object> decisions = new ArrayList<>();
+
+        for (Map.Entry<String, MrdPolicyConfig> entry :
+                config.getPolicies().entrySet()) {
+
+            MrdPolicyConfig policy = entry.getValue();
+
+            Object result = evaluatePolicy(policy, data);
+
+            if (result != null) {
+                decisions.add(result);
+            }
+        }
+
+        /*
+         ===========================
+         4. AGGREGATE
+         ===========================
+         */
+        return aggregate(decisions);
+    }
+
+    /*
+     ===========================
+     EXTRACT (FROM POLICY CONFIG)
+     ===========================
+     */
+    private void extract(MrdPolicyConfig policy,
+                         Map<String,Object> data,
+                         Map<String,Object> ctx) throws Exception {
+
+        String payload = data.get("payload").toString();
+
+        Object value = null;
+
+        if (policy.getJsonPath() != null) {
+
+            value = jsonExtractor.extract(payload, policy.getJsonPath());
+            ctx.put(policy.getJsonPath(), value); // optional key mapping
+        }
+
+        if ("XML".equals(data.get("type")) &&
+            policy.getXpath() != null) {
+
+            value = xpathExtractor.extract(
+                    (org.w3c.dom.Document) data.get("xmlDoc"),
+                    policy.getXpath());
+
+            ctx.put(policy.getXpath(), value);
+        }
+    }
+
+    /*
+     ===========================
+     POLICY EXECUTION
+     ===========================
+     */
+    private Object evaluatePolicy(MrdPolicyConfig policy,
+                                  Map<String,Object> data) {
+
+        switch (policy.getMode()) {
+
+            case POLICY_DB:
+                return evaluator.evaluate(policy.getRule(), data);
+
+            case JSON_PATH:
+                return evaluateJsonPath(data.get("payload").toString(),
+                                        policy.getJsonPath());
+
+            case XPATH:
+                return evaluateXPath(data,
+                        policy.getXpath());
+
+            default:
+                return null;
+        }
+    }
+
+    /*
+     ===========================
+     JSON PATH POLICY
+     ===========================
+     */
+    private Object evaluateJsonPath(String payload, String path) {
+
+        try {
+            Object val = jsonExtractor.extract(payload, path);
+
+            return (val != null) ? "FILTER" : "PASS";
+
+        } catch (Exception e) {
+            return "PASS";
+        }
+    }
+
+    /*
+     ===========================
+     XPATH POLICY
+     ===========================
+     */
+    private Object evaluateXPath(Map<String,Object> data,
+                                 String path) {
+
+        try {
+            Object val = xpathExtractor.extract(
+                    (org.w3c.dom.Document) data.get("xmlDoc"),
+                    path);
+
+            return (val != null) ? "FILTER" : "PASS";
+
+        } catch (Exception e) {
+            return "PASS";
+        }
+    }
+
+    /*
+     ===========================
+     AGGREGATOR (STRATEGY)
+     ===========================
+     */
+    private Object aggregate(List<Object> decisions) {
+
+        if (decisions.isEmpty()) return "PASS";
+
+        // FILTER wins
+        for (Object d : decisions) {
+            if ("FILTER".equals(d)) return "FILTER";
+        }
+
+        // FULL_MASK
+        for (Object d : decisions) {
+            if (isFullMask(d)) return d;
+        }
+
+        // PARTIAL_MASK
+        for (Object d : decisions) {
+            if (isPartialMask(d)) return d;
+        }
+
+        return "PASS";
+    }
+
+    private boolean isFullMask(Object d) {
+        return d instanceof Map &&
+               "FULL_MASK".equals(((Map<?,?>) d).get("type"));
+    }
+
+    private boolean isPartialMask(Object d) {
+        return d instanceof Map &&
+               "PARTIAL_MASK".equals(((Map<?,?>) d).get("type"));
+    }
+}

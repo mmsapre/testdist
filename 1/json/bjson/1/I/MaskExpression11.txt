@@ -1,0 +1,32 @@
+package com.acme.graavl.logic.expressions;
+
+import com.brunocesar.jsonlogic.evaluator.*;
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+
+import java.util.Map;
+
+public class MaskExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "mask";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        // args[0] = mask object
+        Object maskObj = evaluator.evaluate(args.get(0), data);
+
+        if (!(maskObj instanceof Map)) {
+            return null;
+        }
+
+        return Map.of(
+                "action", "MASK",
+                "mask", maskObj
+        );
+    }
+}

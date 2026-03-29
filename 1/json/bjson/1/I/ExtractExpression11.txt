@@ -1,0 +1,53 @@
+package com.acme.graavl.logic.expressions;
+
+import com.brunocesar.jsonlogic.evaluator.*;
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+
+import java.util.Map;
+
+public class ExtractExpression implements JsonLogicExpression {
+
+    private final JsonPathExtractor json;
+    private final XPathExtractor xpath;
+
+    public ExtractExpression(JsonPathExtractor json,
+                             XPathExtractor xpath) {
+        this.json = json;
+        this.xpath = xpath;
+    }
+
+    @Override
+    public String key() {
+        return "extract";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Map<String,Object> root = (Map<String,Object>) data;
+        Map<String,Object> ctx = (Map<String,Object>) root.get("ctx");
+
+        String key = evaluator.evaluate(args.get(0), data).toString();
+        Map<String,Object> cfg = (Map<String,Object>) args.get(1);
+
+        Object value;
+
+        if ("XML".equals(root.get("type"))) {
+            value = xpath.extract(
+                    (org.w3c.dom.Document) root.get("xmlDoc"),
+                    (String) cfg.get("xPath")
+            );
+        } else {
+            value = json.extract(
+                    root.get("payload").toString(),
+                    (String) cfg.get("jsonPath")
+            );
+        }
+
+        ctx.put(key, value);
+
+        return value;
+    }
+}

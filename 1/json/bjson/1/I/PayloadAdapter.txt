@@ -1,0 +1,124 @@
+package com.acme.graavl.adapter;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.w3c.dom.Document;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.util.HashMap;
+import java.util.Map;
+
+public class PayloadAdapter {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    public static Map<String,Object> adapt(Object input) {
+
+        Map<String,Object> root = new HashMap<>();
+
+        // 🔥 always initialize ctx
+        root.put("ctx", new HashMap<>());
+
+        if (input == null) {
+            root.put("type", "EMPTY");
+            return root;
+        }
+
+        /*
+         ===========================
+         CASE 1: Already Map (legacy JSON-logic)
+         ===========================
+         */
+        if (input instanceof Map<?,?> map) {
+
+            root.put("type", "MAP");
+            root.put("payload", map);
+
+            // preload ctx
+            ((Map<String,Object>) root.get("ctx")).putAll((Map) map);
+
+            return root;
+        }
+
+        /*
+         ===========================
+         CASE 2: String payload
+         ===========================
+         */
+        String payload = input.toString().trim();
+
+        root.put("payload", payload);
+
+        /*
+         ===========================
+         JSON DETECTION
+         ===========================
+         */
+        if (isJson(payload)) {
+
+            root.put("type", "JSON");
+
+            try {
+                Map<String,Object> json =
+                        MAPPER.readValue(payload, Map.class);
+
+                root.put("jsonObj", json);
+
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid JSON payload", e);
+            }
+
+            return root;
+        }
+
+        /*
+         ===========================
+         XML DETECTION
+         ===========================
+         */
+        if (isXml(payload)) {
+
+            root.put("type", "XML");
+
+            try {
+                Document doc = parseXml(payload);
+                root.put("xmlDoc", doc);
+
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid XML payload", e);
+            }
+
+            return root;
+        }
+
+        /*
+         ===========================
+         FALLBACK
+         ===========================
+         */
+        root.put("type", "STRING");
+
+        return root;
+    }
+
+    /*
+     ===========================
+     HELPERS
+     ===========================
+     */
+
+    private static boolean isJson(String payload) {
+        return payload.startsWith("{") || payload.startsWith("[");
+    }
+
+    private static boolean isXml(String payload) {
+        return payload.startsWith("<");
+    }
+
+    private static Document parseXml(String xml) throws Exception {
+
+        return DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xml.getBytes()));
+    }
+}

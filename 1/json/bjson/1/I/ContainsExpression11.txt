@@ -1,0 +1,20 @@
+public class ContainsExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "contains";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Object value = evaluator.evaluate(args.get(0), data);
+        Object search = evaluator.evaluate(args.get(1), data);
+
+        if (value == null || search == null) return false;
+
+        return value.toString().contains(search.toString());
+    }
+}

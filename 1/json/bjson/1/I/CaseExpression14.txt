@@ -1,0 +1,77 @@
+package com.acme.graavl.logic;
+
+import com.brunocesar.jsonlogic.evaluator.*;
+import com.brunocesar.jsonlogic.ast.JsonLogicArray;
+import com.brunocesar.jsonlogic.ast.JsonLogicNode;
+
+import java.util.List;
+
+public class CaseExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "case";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        /*
+         args[0] → list of case entries
+         */
+        List<CaseEntry> entries = (List<CaseEntry>) args.get(0);
+
+        for (CaseEntry entry : entries) {
+
+            /*
+             WHEN
+             */
+            if (entry.when != null) {
+
+                Object cond = evaluator.evaluate(entry.when, data);
+
+                if (truthy(cond)) {
+
+                    Object result = evaluator.evaluate(entry.then, data);
+
+                    return normalize(result);
+                }
+            }
+
+            /*
+             ELSE
+             */
+            if (entry.elseNode != null) {
+
+                Object result = evaluator.evaluate(entry.elseNode, data);
+
+                return normalize(result);
+            }
+        }
+
+        return null;
+    }
+
+    private Object normalize(Object result) {
+
+        if (result instanceof String) return result;
+
+        if (result instanceof java.util.Map<?,?> map &&
+            map.containsKey("mask")) {
+
+            return java.util.Map.of(
+                    "action", "MASK",
+                    "mask", map.get("mask")
+            );
+        }
+
+        return result;
+    }
+
+    private boolean truthy(Object val) {
+        return val != null &&
+               !(val.equals(false) || val.equals(0) || val.equals(""));
+    }
+}

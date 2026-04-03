@@ -1,0 +1,69 @@
+package com.acme.graavl.validation;
+
+import com.acme.graavl.adapter.PayloadAdapter;
+import com.acme.graavl.mask.GraavlMaskEngine;
+import com.brunocesar.jsonlogic.JsonLogic;
+
+import org.jeasy.batch.core.processor.RecordProcessor;
+
+import java.util.Map;
+
+public class GraavlValidationProcessor
+        implements RecordProcessor<String, ValidationResult> {
+
+    private final JsonLogic jsonLogic;
+    private final GraavlMaskEngine maskEngine;
+
+    private final Object rule; // parsed JSON-Logic rule
+
+    public GraavlValidationProcessor(JsonLogic jsonLogic,
+                                     GraavlMaskEngine maskEngine,
+                                     Object rule) {
+
+        this.jsonLogic = jsonLogic;
+        this.maskEngine = maskEngine;
+        this.rule = rule;
+    }
+
+    @Override
+    public ValidationResult processRecord(String payload) throws Exception {
+
+        /*
+         ===========================
+         1. ADAPT PAYLOAD
+         ===========================
+         */
+        Map<String,Object> data = PayloadAdapter.adapt(payload);
+
+        /*
+         ===========================
+         2. EXECUTE JSON-LOGIC
+         ===========================
+         */
+        Object result = jsonLogic.apply(rule.toString(), data);
+
+        /*
+         ===========================
+         3. HANDLE RESULT
+         ===========================
+         */
+        if (result instanceof Map<?,?> map) {
+
+            if ("MASK".equals(map.get("action"))) {
+
+                String masked = maskEngine.apply(
+                        payload,
+                        (Map<String,Object>) map
+                );
+
+                return new ValidationResult("MASK", masked);
+            }
+        }
+
+        if ("FILTER".equals(result)) {
+            return new ValidationResult("FILTER", payload);
+        }
+
+        return new ValidationResult("PASS", payload);
+    }
+}

@@ -1,0 +1,116 @@
+package com.acme.graavl.logic;
+
+import com.brunocesar.jsonlogic.evaluator.*;
+import com.brunocesar.jsonlogic.ast.*;
+
+import java.util.Map;
+
+public class CaseExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "case";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) throws JsonLogicEvaluationException {
+
+        for (JsonLogicNode node : args) {
+
+            /*
+             Each node represents:
+             { "when": ..., "then": ... }
+             */
+
+            Object evaluatedEntry = evaluator.evaluate(node, data);
+
+            if (!(evaluatedEntry instanceof Map<?,?> m)) {
+                continue;
+            }
+
+            /*
+             ===========================
+             WHEN
+             ===========================
+             */
+            if (m.containsKey("when")) {
+
+                Object whenObj = m.get("when");
+
+                Object cond = evalInner(evaluator, whenObj, data);
+
+                if (truthy(cond)) {
+
+                    Object thenObj = m.get("then");
+
+                    Object result = evalInner(evaluator, thenObj, data);
+
+                    return normalize(result);
+                }
+            }
+
+            /*
+             ===========================
+             ELSE
+             ===========================
+             */
+            if (m.containsKey("else")) {
+
+                Object elseObj = m.get("else");
+
+                Object result = evalInner(evaluator, elseObj, data);
+
+                return normalize(result);
+            }
+        }
+
+        return null;
+    }
+
+    /*
+     ===========================
+     HANDLE nested node or primitive
+     ===========================
+     */
+    private Object evalInner(JsonLogicEvaluator evaluator,
+                             Object obj,
+                             Object data) throws JsonLogicEvaluationException {
+
+        if (obj instanceof JsonLogicNode node) {
+            return evaluator.evaluate(node, data);
+        }
+
+        // fallback (string, number, etc.)
+        return obj;
+    }
+
+    /*
+     ===========================
+     Normalize output (mask support)
+     ===========================
+     */
+    private Object normalize(Object result) {
+
+        if (result instanceof String) {
+            return result; // PASS / FILTER
+        }
+
+        if (result instanceof Map<?,?> map &&
+            map.containsKey("mask")) {
+
+            return Map.of(
+                    "action", "MASK",
+                    "mask", map.get("mask")
+            );
+        }
+
+        return result;
+    }
+
+    private boolean truthy(Object val) {
+        return val != null &&
+               !(val.equals(false) || val.equals(0) || val.equals(""));
+    }
+}

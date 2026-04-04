@@ -1,0 +1,78 @@
+rule: >
+  {
+    "seq":[
+
+      { "extract":["mrdId", { "xpath":"/Account/mrdAccountId" }] },
+      { "extract":["accountNo", { "xpath":"/Account/accountNumber" }] },
+      { "extract":["accountType", { "xpath":"/Account/partyRole/roleType" }] },
+
+      /* GRID POLICY */
+
+      {
+        "var":[
+          "gridAction",
+          {
+            "dsl":{
+              "alias":"POLICY_LOOKUP",
+              "policyKey":"block-grid",
+              "params":{
+                "value": { "var":"mrdId" }
+              }
+            }
+          }
+        ]
+      },
+
+      /* ACCOUNT POLICY */
+
+      {
+        "var":[
+          "accountAction",
+          {
+            "if":[
+
+              { "==":[ { "var":"accountType" }, "SECURITIES" ] },
+
+              {
+                "dsl":{
+                  "alias":"POLICY_LOOKUP",
+                  "policyKey":"sec-acc-block",
+                  "params":{
+                    "value": { "var":"accountNo" }
+                  }
+                }
+              },
+
+              {
+                "dsl":{
+                  "alias":"POLICY_LOOKUP",
+                  "policyKey":"cash-acc-block",
+                  "params":{
+                    "value": { "var":"accountNo" }
+                  }
+                }
+              }
+
+            ]
+          }
+        ]
+      },
+
+      /* FINAL AGGREGATION */
+
+      {
+        "var":[
+          "finalAction",
+          {
+            "aggregate_actions":[
+              { "var":"gridAction" },
+              { "var":"accountAction" }
+            ]
+          }
+        ]
+      },
+
+      { "var":"finalAction" }
+
+    ]
+  }

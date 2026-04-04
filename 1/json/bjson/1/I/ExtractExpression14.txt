@@ -87,4 +87,43 @@ public class ExtractExpression implements JsonLogicExpression {
             throw new RuntimeException(e);
         }
     }
+
+private Object extractRaw(JsonLogicNode node) {
+
+    if (node instanceof JsonLogicPrimitive p) {
+        return p.getValue();
+    }
+
+    if (node instanceof JsonLogicArray arr) {
+        List<Object> list = new ArrayList<>();
+        for (JsonLogicNode n : arr) {
+            list.add(extractRaw(n));
+        }
+        return list;
+    }
+
+    if (node instanceof JsonLogicOperation op) {
+
+        Map<String, Object> map = new HashMap<>();
+
+        String key = op.getOperator();
+
+        if (op.getValues().size() == 1) {
+            map.put(key, extractRaw(op.getValues().get(0)));
+        } else {
+            List<Object> list = new ArrayList<>();
+            for (JsonLogicNode n : op.getValues()) {
+                list.add(extractRaw(n));
+            }
+            map.put(key, list);
+        }
+
+        return map;
+    }
+
+    return null;
+}
+
+
+
 }

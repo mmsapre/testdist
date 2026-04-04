@@ -1,0 +1,24 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import java.util.Map;
+
+public class VarExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "var";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Map<String, Object> ctx = (Map<String, Object>) data;
+
+        Object key = evaluator.evaluate(args.get(0), data);
+
+        return ctx.get(key.toString());
+    }
+}

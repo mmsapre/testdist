@@ -1,0 +1,90 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import com.jayway.jsonpath.JsonPath;
+
+import javax.xml.xpath.*;
+import org.w3c.dom.*;
+
+import java.util.Map;
+
+public class ExtractExpression implements JsonLogicExpression {
+
+    private static final XPath XPATH =
+            XPathFactory.newInstance().newXPath();
+
+    @Override
+    public String key() {
+        return "extract";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data)
+            throws JsonLogicEvaluationException {
+
+        Map<String, Object> ctx = (Map<String, Object>) data;
+
+        String varName = evaluator.evaluate(args.get(0), data).toString();
+
+        Object pathObj = evaluator.evaluate(args.get(1), data);
+
+        Object value = null;
+
+        try {
+
+            if (pathObj instanceof Map<?,?> map) {
+
+                boolean hasJson = ctx.get("json") != null;
+                boolean hasXml  = ctx.get("xml")  != null;
+
+                // ---------------- JSON MODE
+                if (hasJson && map.containsKey("jsonpath")) {
+
+                    value = JsonPath.read(
+                            ctx.get("json"),
+                            map.get("jsonpath").toString()
+                    );
+                }
+
+                // ---------------- XML MODE
+                else if (hasXml && map.containsKey("xpath")) {
+
+                    value = resolveXpath(
+                            map.get("xpath").toString(),
+                            ctx
+                    );
+                }
+            }
+
+            // store variable
+            Map<String, Object> vars =
+                    (Map<String, Object>) ctx.computeIfAbsent("vars",
+                            k -> new java.util.HashMap<>());
+
+            vars.put(varName, value);
+
+            return value;
+
+        } catch (Exception e) {
+            throw new JsonLogicEvaluationException(e);
+        }
+    }
+
+    private Object resolveXpath(String path, Map<String, Object> ctx) {
+
+        try {
+            Node node = (Node) XPATH.evaluate(
+                    path,
+                    ctx.get("xml"),
+                    XPathConstants.NODE
+            );
+
+            return node != null ? node.getTextContent() : null;
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}

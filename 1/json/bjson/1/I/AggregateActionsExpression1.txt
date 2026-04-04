@@ -1,0 +1,49 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import java.util.*;
+
+public class AggregateActionsExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "aggregate_actions";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Map<String, Object> best = null;
+
+        for (JsonLogicNode node : args) {
+
+            Object val = evaluator.evaluate(node, data);
+
+            if (!(val instanceof Map)) continue;
+
+            Map<String, Object> policy = (Map<String, Object>) val;
+
+            if (policy.get("action") == null) continue;
+
+            if (best == null) {
+                best = policy;
+                continue;
+            }
+
+            Integer p1 = (Integer) policy.getOrDefault("priority", 999);
+            Integer p2 = (Integer) best.getOrDefault("priority", 999);
+
+            if (p1 < p2) {
+                best = policy;
+            }
+        }
+
+        if (best == null) {
+            return Map.of("action","PASS","priority",999);
+        }
+
+        return best;
+    }
+}

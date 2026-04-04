@@ -1,0 +1,28 @@
+package expressions;
+
+import com.brunocesar.jsonlogic.*;
+import java.util.Map;
+
+public class SetExpression implements JsonLogicExpression {
+
+    @Override
+    public String key() {
+        return "set";
+    }
+
+    @Override
+    public Object evaluate(JsonLogicEvaluator evaluator,
+                           JsonLogicArray args,
+                           Object data) {
+
+        Map<String, Object> ctx = (Map<String, Object>) data;
+
+        String key = evaluator.evaluate(args.get(0), data).toString();
+
+        Object value = evaluator.evaluate(args.get(1), data);
+
+        ctx.put(key, value);
+
+        return value;
+    }
+}

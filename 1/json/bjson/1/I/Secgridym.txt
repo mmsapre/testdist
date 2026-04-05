@@ -1,0 +1,106 @@
+{
+  "seq":[
+
+    /*
+     ===========================
+     1. EXTRACT FIELDS
+     ===========================
+     */
+    {
+      "set":[ "accountNo", { "ctx":"accountNo" } ]
+    },
+    {
+      "set":[ "mrdId", { "ctx":"mrdId" } ]
+    },
+    {
+      "set":[ "accountType", { "ctx":"accountType" } ]
+    },
+    {
+      "set":[ "source", { "ctx":"source" } ]
+    },
+
+    /*
+     ===========================
+     2. SOURCE + TYPE CHECK
+     ===========================
+     */
+    {
+      "if":[
+        {
+          "and":[
+            { "==":[ { "ctx":"source" }, "GHSS" ] },
+            { "==":[ { "ctx":"accountType" }, "SEC" ] }
+          ]
+        },
+        null,
+        "FILTER"
+      ]
+    },
+
+    /*
+     ===========================
+     3. GRID CHECK
+     ===========================
+     */
+    {
+      "set":[
+        "gridResult",
+        { "dsl":"GRID_LOOKUP" }
+      ]
+    },
+
+    {
+      "if":[
+        { "==":[ { "ctx":"gridResult" }, null ] },
+        "FILTER",
+        null
+      ]
+    },
+
+    /*
+     ===========================
+     4. BLOCK SEC ACCOUNT CHECK
+     ===========================
+     */
+    {
+      "set":[
+        "secAccResult",
+        { "dsl":"BLOCK_SEC_ACC_LOOKUP" }
+      ]
+    },
+
+    /*
+     ===========================
+     5. FINAL DECISION
+     ===========================
+     */
+    {
+      "if":[
+        {
+          "!=":[ { "ctx":"secAccResult" }, null ]
+        },
+        "PASS",
+        "FILTER"
+      ]
+    }
+
+  ]
+}
+
+–
+
+{
+  "if":[
+    {
+      "and":[
+        { "==":[ { "ctx":"source" }, "GHSS" ] },
+        { "==":[ { "ctx":"accountType" }, "SEC" ] },
+        { "!=":[ { "dsl":"GRID_LOOKUP" }, null ] },
+        { "!=":[ { "dsl":"BLOCK_SEC_ACC_LOOKUP" }, null ] }
+      ]
+    },
+    "PASS",
+    "FILTER"
+  ]
+}
+

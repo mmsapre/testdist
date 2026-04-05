@@ -1,0 +1,119 @@
+{
+  "seq":[
+
+    /*
+     ===========================
+     1. EXTRACT GRID
+     ===========================
+     */
+    {
+      "set":[
+        "grid",
+        { "ctx":"grid" }
+      ]
+    },
+
+    /*
+     ===========================
+     2. VALIDATE GRID EXISTS
+     ===========================
+     */
+    {
+      "if":[
+        {
+          "or":[
+            { "==":[ { "ctx":"grid" }, null ] },
+            { "==":[ { "ctx":"grid" }, "" ] }
+          ]
+        },
+        "FILTER",
+        null
+      ]
+    },
+
+    /*
+     ===========================
+     3. PASS GRID CHECK
+     ===========================
+     */
+    {
+      "set":[
+        "passGridResult",
+        { "dsl":"PASS_GRID_LOOKUP" }
+      ]
+    },
+
+    {
+      "if":[
+        {
+          "==":[ { "ctx":"passGridResult" }, null ]
+        },
+        "FILTER",
+        null
+      ]
+    },
+
+    /*
+     ===========================
+     4. BLOCK GRID CHECK
+     ===========================
+     */
+    {
+      "set":[
+        "blockGridResult",
+        { "dsl":"BLOCK_GRID_LOOKUP" }
+      ]
+    },
+
+    {
+      "if":[
+        {
+          "!=":[ { "ctx":"blockGridResult" }, null ]
+        },
+        "FILTER",
+        null
+      ]
+    },
+
+    /*
+     ===========================
+     5. FINAL SUCCESS
+     ===========================
+     */
+    "PASS"
+
+  ]
+}
+
+
+
+--–
+
+
+
+
+
+{
+  "if":[
+    {
+      "or":[
+        { "==":[ { "ctx":"grid" }, null ] },
+        { "==":[ { "ctx":"grid" }, "" ] }
+      ]
+    },
+    "FILTER",
+
+    {
+      "if":[
+        {
+          "and":[
+            { "!=":[ { "dsl":"PASS_GRID_LOOKUP" }, null ] },
+            { "==":[ { "dsl":"BLOCK_GRID_LOOKUP" }, null ] }
+          ]
+        },
+        "PASS",
+        "FILTER"
+      ]
+    }
+  ]
+}

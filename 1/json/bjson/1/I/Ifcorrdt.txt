@@ -1,0 +1,26 @@
+{
+  "if":[
+    {
+      "and":[
+        {
+          "or":[
+            { "in":[ "GHSS", { "ctx":"referenceName" } ] },
+            { "in":[ "GHSS", { "ctx":"referenceValue" } ] }
+          ]
+        },
+        {
+          "==":[ { "ctx":"accountType" }, "CASH" ]
+        }
+      ]
+    },
+
+    {
+      "seq":[
+        { "dsl":"GRID_LOOKUP" },
+        "FILTER"
+      ]
+    },
+
+    "PASS"
+  ]
+}

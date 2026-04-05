@@ -1,0 +1,29 @@
+package com.acme.graavl.dsl.builder;
+
+import com.acme.graavl.dsl.config.TableConfig;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class FromClauseBuilder {
+
+    public String build(List<TableConfig> tables) {
+
+        if (tables == null || tables.isEmpty()) {
+            throw new IllegalArgumentException("No tables configured");
+        }
+
+        return tables.stream()
+                .map(this::buildTable)
+                .collect(Collectors.joining(", "));
+    }
+
+    private String buildTable(TableConfig t) {
+
+        if (t.getAlias() != null && !t.getAlias().isEmpty()) {
+            return t.getName() + " " + t.getAlias();
+        }
+
+        return t.getName();
+    }
+}

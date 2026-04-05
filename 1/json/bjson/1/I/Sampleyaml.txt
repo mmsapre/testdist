@@ -1,0 +1,44 @@
+{
+  "seq":[
+
+    {
+      "if":[
+        { "==":[ { "dsl":"POI_LOOKUP" }, "Y" ] },
+        null,
+        { "set":["poiAllowed", false] }
+      ]
+    },
+
+    {
+      "set":[
+        "gridResult",
+        { "dsl":"GRID_LOOKUP" }
+      ]
+    },
+
+    {
+      "if":[
+        { "==":[ { "ctx":"accountType" }, "SEC" ] },
+        {
+          "set":[
+            "accountResult",
+            { "dsl":"SEC_ACC_LOOKUP" }
+          ]
+        },
+        {
+          "if":[
+            { "==":[ { "ctx":"accountType" }, "CASH" ] },
+            {
+              "set":[
+                "accountResult",
+                { "dsl":"CASH_ACC_LOOKUP" }
+              ]
+            },
+            null
+          ]
+        }
+      ]
+    }
+
+  ]
+}

@@ -1,0 +1,25 @@
+public class ValidationResult {
+
+    private final String action;
+    private final String payload;
+
+    private ValidationResult(String action, String payload) {
+        this.action = action;
+        this.payload = payload;
+    }
+
+    public static ValidationResult pass(String payload) {
+        return new ValidationResult("PASS", payload);
+    }
+
+    public static ValidationResult filter() {
+        return new ValidationResult("FILTER", null);
+    }
+
+    public static ValidationResult mask(String payload) {
+        return new ValidationResult("MASK", payload);
+    }
+
+    public String getAction() { return action; }
+    public String getPayload() { return payload; }
+}

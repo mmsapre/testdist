@@ -1,0 +1,152 @@
+@ExtendWith(MockitoExtension.class)
+class GraavlValidationProcessorTest {
+
+    @Mock
+    QueryDslExecutor executor;
+
+    GraavlMaskEngine maskEngine = new GraavlMaskEngine();
+
+    GraavlValidationProcessor processor;
+
+    JsonLogic logic;
+
+    @BeforeEach
+    void setup() {
+
+        logic = new JsonLogic();
+
+        logic.addOperation(new SeqExpression());
+        logic.addOperation(new SetExpression());
+        logic.addOperation(new DslExpression(executor, Map.of()));
+        logic.addOperation(new MaskExpression());
+
+        processor = new GraavlValidationProcessor(
+                ValidationStrategy.PRIORITY_HIGHEST_WINS,
+                maskEngine
+        );
+    }
+
+@Test
+void shouldPassWhenNoRulesTriggered() throws Exception {
+
+    Map<String,Object> data = new HashMap<>();
+    data.put("ctx", new HashMap<>());
+
+    ValidationResult result =
+            processor.process("{\"a\":1}", data);
+
+    assertEquals("PASS", result.getAction());
+}
+
+@Test
+void shouldFilterWhenResultIsFilter() throws Exception {
+
+    Map<String,Object> ctx = new HashMap<>();
+
+    ctx.put("results", List.of(
+            Map.of("result", "FILTER", "priority", 1)
+    ));
+
+    Map<String,Object> data = Map.of("ctx", ctx);
+
+    ValidationResult result =
+            processor.process("{\"a\":1}", data);
+
+    assertEquals("FILTER", result.getAction());
+    assertNull(result.getPayload());
+}
+
+@Test
+void shouldApplyFullMask() throws Exception {
+
+    Map<String,Object> ctx = new HashMap<>();
+
+    ctx.put("results", List.of(
+            Map.of(
+                    "result", "FULL_MASK",
+                    "priority", 1,
+                    "exclude", List.of("$.accountNo")
+            )
+    ));
+
+    Map<String,Object> data = Map.of("ctx", ctx);
+
+    String payload = """
+        {"accountNo":"123","balance":100}
+    """;
+
+    ValidationResult result =
+            processor.process(payload, data);
+
+    assertEquals("MASK", result.getAction());
+    assertNotNull(result.getPayload());
+}
+
+@Test
+void shouldApplyPartialMask() throws Exception {
+
+    Map<String,Object> ctx = new HashMap<>();
+
+    ctx.put("results", List.of(
+            Map.of(
+                    "result", "PARTIAL_MASK",
+                    "priority", 1,
+                    "include", List.of("$.balance")
+            )
+    ));
+
+    Map<String,Object> data = Map.of("ctx", ctx);
+
+    String payload = """
+        {"accountNo":"123","balance":100}
+    """;
+
+    ValidationResult result =
+            processor.process(payload, data);
+
+    assertEquals("MASK", result.getAction());
+}
+
+@Test
+void shouldPickHighestPriority() throws Exception {
+
+    Map<String,Object> ctx = new HashMap<>();
+
+    ctx.put("results", List.of(
+            Map.of("result", "PASS", "priority", 5),
+            Map.of("result", "FILTER", "priority", 1)
+    ));
+
+    Map<String,Object> data = Map.of("ctx", ctx);
+
+    ValidationResult result =
+            processor.process("{\"a\":1}", data);
+
+    assertEquals("FILTER", result.getAction());
+}
+
+@Test
+void shouldExecuteDslAndMask() throws Exception {
+
+    when(executor.executeByMap(eq("GRID"), any()))
+            .thenReturn(List.of(Map.of("result", "FULL_MASK")));
+
+    Map<String,Object> ctx = new HashMap<>();
+
+    ctx.put("results", List.of(
+            Map.of(
+                    "result", "FULL_MASK",
+                    "priority", 1,
+                    "exclude", List.of("$.accountNo")
+            )
+    ));
+
+    Map<String,Object> data = Map.of("ctx", ctx);
+
+    ValidationResult result =
+            processor.process("{\"accountNo\":\"123\"}", data);
+
+    assertEquals("MASK", result.getAction());
+}
+
+}

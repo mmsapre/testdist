@@ -1,0 +1,66 @@
+@ExtendWith(MockitoExtension.class)
+class DslExpressionTest {
+
+    @Mock
+    QueryDslExecutor executor;
+
+    JsonLogic logic;
+
+    @BeforeEach
+    void setup() {
+        logic = TestHelper.build(
+                new DslExpression(executor, Map.of())
+        );
+    }
+
+    @Test
+    void shouldReturnResultWhenQueryReturnsRow() throws Exception {
+
+        Map<String,Object> row = Map.of("result", "BLOCK");
+
+        when(executor.executeByMap(eq("GRID_LOOKUP"), any()))
+                .thenReturn(List.of(row));
+
+        Object out = logic.apply(
+                "{ \"dsl\":\"GRID_LOOKUP\" }",
+                TestHelper.data()
+        );
+
+        assertEquals("BLOCK", out);
+    }
+
+    @Test
+    void shouldReturnNullWhenNoResult() throws Exception {
+
+        when(executor.executeByMap(eq("GRID_LOOKUP"), any()))
+                .thenReturn(List.of());
+
+        Object out = logic.apply(
+                "{ \"dsl\":\"GRID_LOOKUP\" }",
+                TestHelper.data()
+        );
+
+        assertNull(out);
+    }
+
+    @Test
+    void shouldReturnDefaultWhenConfigured() throws Exception {
+
+        Map<String, MrdDslQueryConfig> cfg =
+                Map.of("GRID_LOOKUP", new MrdDslQueryConfig("FILTER"));
+
+        logic = TestHelper.build(
+                new DslExpression(executor, cfg)
+        );
+
+        when(executor.executeByMap(eq("GRID_LOOKUP"), any()))
+                .thenReturn(List.of());
+
+        Object out = logic.apply(
+                "{ \"dsl\":\"GRID_LOOKUP\" }",
+                TestHelper.data()
+        );
+
+        assertEquals("FILTER", out);
+    }
+}

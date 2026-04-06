@@ -1,0 +1,12 @@
+public class GraavlMaskEngine {
+
+    public String fullMask(String json, List<String> excludePaths) {
+        // mask everything except excludePaths
+        return "...";
+    }
+
+    public String partialMask(String json, List<String> includePaths) {
+        // mask only includePaths
+        return "...";
+    }
+}

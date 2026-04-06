@@ -1,0 +1,105 @@
+public class GraavlValidationProcessor {
+
+    private final ValidationStrategy strategy;
+    private final GraavlMaskEngine maskEngine;
+
+    public GraavlValidationProcessor(ValidationStrategy strategy,
+                                     GraavlMaskEngine maskEngine) {
+        this.strategy = strategy;
+        this.maskEngine = maskEngine;
+    }
+
+    public ValidationResult process(String payload,
+                                    Map<String,Object> data) throws Exception {
+
+        Map<String,Object> ctx =
+                (Map<String,Object>) data.get("ctx");
+
+        List<Map<String,Object>> raw =
+                (List<Map<String,Object>>) ctx.get("results");
+
+        if (raw == null || raw.isEmpty()) {
+            return ValidationResult.pass(payload);
+        }
+
+        List<PolicyResult> results = raw.stream()
+                .map(this::toPolicyResult)
+                .toList();
+
+        PolicyResult finalResult = resolve(results);
+
+        return handleAction(payload, finalResult);
+    }
+
+private PolicyResult resolve(List<PolicyResult> results) {
+
+    return switch (strategy) {
+
+        case FIRST_MATCH -> results.get(0);
+
+        case PRIORITY_HIGHEST_WINS ->
+                results.stream()
+                       .min(Comparator.comparingInt(PolicyResult::getPriority))
+                       .orElse(null);
+
+        case ALL_MATCH -> merge(results);
+    };
+}
+
+
+private ValidationResult handleAction(String payload,
+                                      PolicyResult r) {
+
+    if (r == null || r.getAction() == null) {
+        return ValidationResult.pass(payload);
+    }
+
+    switch (r.getAction()) {
+
+        /*
+         ===========================
+         PASS
+         ===========================
+         */
+        case "PASS":
+            return ValidationResult.pass(payload);
+
+        /*
+         ===========================
+         FILTER
+         ===========================
+         */
+        case "FILTER":
+            System.err.println("⚠️ Message filtered due to policy: " + r);
+            return ValidationResult.filter();
+
+        /*
+         ===========================
+         FULL MASK (exclude)
+         ===========================
+         */
+        case "FULL_MASK":
+            String fullMasked = maskEngine.fullMask(
+                    payload,
+                    r.getExclude()
+            );
+            return ValidationResult.mask(fullMasked);
+
+        /*
+         ===========================
+         PARTIAL MASK (include)
+         ===========================
+         */
+        case "PARTIAL_MASK":
+            String partialMasked = maskEngine.partialMask(
+                    payload,
+                    r.getInclude()
+            );
+            return ValidationResult.mask(partialMasked);
+
+        default:
+            return ValidationResult.pass(payload);
+    }
+}
+
+

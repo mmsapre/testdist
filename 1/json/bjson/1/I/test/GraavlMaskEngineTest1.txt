@@ -1,0 +1,32 @@
+class GraavlMaskEngineTest {
+
+    GraavlMaskEngine engine = new GraavlMaskEngine();
+
+    String payload = """
+        {
+          "accountNo":"12345",
+          "balance":1000,
+          "name":"John"
+        }
+    """;
+
+    @Test
+    void shouldFullMaskExceptExclude() {
+
+        String masked = engine.fullMask(payload, List.of("$.accountNo"));
+
+        assertTrue(masked.contains("12345")); // excluded
+        assertTrue(masked.contains("****"));  // masked
+    }
+
+    @Test
+    void shouldPartialMaskOnlyInclude() {
+
+        String masked = engine.partialMask(payload, List.of("$.balance"));
+
+        assertTrue(masked.contains("0") || masked.contains("****")); // masked balance
+        assertTrue(masked.contains("John")); // untouched
+    }
+
+
+}

@@ -1,0 +1,46 @@
+class MaskExpressionTest {
+
+    JsonLogic logic;
+
+    @BeforeEach
+    void setup() {
+        logic = new JsonLogic();
+        logic.addOperation(new MaskExpression());
+    }
+
+    @Test
+    void shouldReturnFullMaskStructure() throws Exception {
+
+        Object out = logic.apply(
+                "{ \"mask\": { \"type\":\"FULL_MASK\", \"exclude\":[\"$.acc\"] } }",
+                new HashMap<>()
+        );
+
+        Map<String,Object> result = (Map<String,Object>) out;
+
+        assertEquals("MASK", result.get("action"));
+
+        Map<String,Object> mask = (Map<String,Object>) result.get("mask");
+
+        assertEquals("FULL_MASK", mask.get("type"));
+        assertEquals(List.of("$.acc"), mask.get("exclude"));
+    }
+
+    @Test
+    void shouldReturnPartialMaskStructure() throws Exception {
+
+        Object out = logic.apply(
+                "{ \"mask\": { \"type\":\"PARTIAL_MASK\", \"include\":[\"$.bal\"] } }",
+                new HashMap<>()
+        );
+
+        Map<String,Object> result = (Map<String,Object>) out;
+
+        Map<String,Object> mask = (Map<String,Object>) result.get("mask");
+
+        assertEquals("PARTIAL_MASK", mask.get("type"));
+        assertEquals(List.of("$.bal"), mask.get("include"));
+    }
+
+
+}

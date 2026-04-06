@@ -1,0 +1,79 @@
+class SeqExpressionTest {
+
+    JsonLogic logic;
+
+    @BeforeEach
+    void setup() {
+        logic = TestHelper.build(new SeqExpression());
+    }
+
+    @Test
+    void shouldReturnFirstNonNull() throws Exception {
+
+        Object out = logic.apply(
+                "{ \"seq\":[ null, \"PASS\", \"FILTER\" ] }",
+                TestHelper.data()
+        );
+
+        assertEquals("PASS", out);
+    }
+
+    @Test
+    void shouldFallbackToLastValue() throws Exception {
+
+        Object out = logic.apply(
+                "{ \"seq\":[ null, null, \"FILTER\" ] }",
+                TestHelper.data()
+        );
+
+        assertEquals("FILTER", out);
+    }
+
+    @Test
+    void shouldExecuteDslInsideSeq() throws Exception {
+
+        QueryDslExecutor executor = Mockito.mock(QueryDslExecutor.class);
+
+        when(executor.executeByMap(eq("GRID"), any()))
+                .thenReturn(List.of(Map.of("result", "BLOCK")));
+
+        logic = TestHelper.build(
+                new SeqExpression(),
+                new DslExpression(executor, Map.of())
+        );
+
+        Object out = logic.apply(
+                "{ \"seq\":[ {\"dsl\":\"GRID\"}, \"FILTER\" ] }",
+                TestHelper.data()
+        );
+
+        assertEquals("BLOCK", out);
+    }
+@Test
+void shouldSetAndUseSeqAndDslTogether() throws Exception {
+
+    QueryDslExecutor executor = Mockito.mock(QueryDslExecutor.class);
+
+    when(executor.executeByMap(eq("GRID"), any()))
+            .thenReturn(List.of(Map.of("result", "BLOCK")));
+
+    JsonLogic logic = TestHelper.build(
+            new SeqExpression(),
+            new SetExpression(),
+            new DslExpression(executor, Map.of())
+    );
+
+    Map<String,Object> data = TestHelper.data();
+
+    Object out = logic.apply(
+            "{ \"seq\":[" +
+            "   {\"set\":[\"g\", {\"dsl\":\"GRID\"}] }," +
+            "   {\"ctx\":\"g\"}" +
+            "] }",
+            data
+    );
+
+    assertEquals("BLOCK", out);
+}
+
+}

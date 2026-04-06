@@ -103,3 +103,67 @@ private ValidationResult handleAction(String payload,
 }
 
 
+private PolicyResult toPolicyResult(Map<String,Object> map) {
+
+    PolicyResult r = new PolicyResult();
+
+    /*
+     ===========================
+     ACTION (mandatory)
+     ===========================
+     */
+    Object action = map.get("result");
+
+    if (action == null) {
+        r.setAction("PASS"); // safe default
+    } else {
+        r.setAction(action.toString());
+    }
+
+    /*
+     ===========================
+     PRIORITY (default = 999)
+     ===========================
+     */
+    Object priority = map.get("priority");
+
+    if (priority instanceof Number) {
+        r.setPriority(((Number) priority).intValue());
+    } else {
+        r.setPriority(999);
+    }
+
+    /*
+     ===========================
+     INCLUDE (PARTIAL MASK)
+     ===========================
+     */
+    if (map.get("include") instanceof List<?>) {
+        r.setInclude((List<String>) map.get("include"));
+    }
+
+    /*
+     ===========================
+     EXCLUDE (FULL MASK)
+     ===========================
+     */
+    if (map.get("exclude") instanceof List<?>) {
+        r.setExclude((List<String>) map.get("exclude"));
+    }
+
+    /*
+     ===========================
+     OPTIONAL METADATA
+     ===========================
+     */
+    if (map.get("source") != null) {
+        r.setSource(map.get("source").toString());
+    }
+
+    if (map.get("reason") != null) {
+        r.setReason(map.get("reason").toString());
+    }
+
+    return r;
+}
+

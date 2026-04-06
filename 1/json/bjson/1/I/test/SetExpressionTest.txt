@@ -1,0 +1,49 @@
+class SetExpressionTest {
+
+    JsonLogic logic;
+
+    @BeforeEach
+    void setup() {
+        logic = TestHelper.build(new SetExpression());
+    }
+
+    @Test
+    void shouldSetValueInContext() throws Exception {
+
+        Map<String,Object> data = TestHelper.data();
+
+        logic.apply(
+                "{ \"set\":[\"x\", 10] }",
+                data
+        );
+
+        Map<String,Object> ctx = (Map<String,Object>) data.get("ctx");
+
+        assertEquals(10, ctx.get("x"));
+    }
+
+    @Test
+    void shouldSetDslResult() throws Exception {
+
+        QueryDslExecutor executor = Mockito.mock(QueryDslExecutor.class);
+
+        when(executor.executeByMap(eq("TEST"), any()))
+                .thenReturn(List.of(Map.of("result", "PASS")));
+
+        logic = TestHelper.build(
+                new SetExpression(),
+                new DslExpression(executor, Map.of())
+        );
+
+        Map<String,Object> data = TestHelper.data();
+
+        logic.apply(
+                "{ \"set\":[\"res\", {\"dsl\":\"TEST\"}] }",
+                data
+        );
+
+        Map<String,Object> ctx = (Map<String,Object>) data.get("ctx");
+
+        assertEquals("PASS", ctx.get("res"));
+    }
+}

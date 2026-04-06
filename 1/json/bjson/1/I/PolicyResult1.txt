@@ -1,0 +1,99 @@
+package com.acme.graavl.validation;
+
+import java.util.List;
+
+public class PolicyResult {
+
+    private String action;     // PASS, FILTER, FULL_MASK, PARTIAL_MASK
+    private int priority;      // lower = higher priority
+
+    private List<String> include; // for PARTIAL_MASK
+    private List<String> exclude; // for FULL_MASK
+
+    private String source;     // optional: DSL name
+    private String reason;     // optional: audit/debug
+
+    /*
+     ===========================
+     GETTERS / SETTERS
+     ===========================
+     */
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public List<String> getInclude() {
+        return include;
+    }
+
+    public void setInclude(List<String> include) {
+        this.include = include;
+    }
+
+    public List<String> getExclude() {
+        return exclude;
+    }
+
+    public void setExclude(List<String> exclude) {
+        this.exclude = exclude;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+
+    /*
+     ===========================
+     HELPERS
+     ===========================
+     */
+
+    public boolean isFilter() {
+        return "FILTER".equalsIgnoreCase(action);
+    }
+
+    public boolean isMask() {
+        return "FULL_MASK".equals(action) || "PARTIAL_MASK".equals(action);
+    }
+
+    public boolean isPass() {
+        return "PASS".equalsIgnoreCase(action);
+    }
+
+    @Override
+    public String toString() {
+        return "PolicyResult{" +
+                "action='" + action + '\'' +
+                ", priority=" + priority +
+                ", include=" + include +
+                ", exclude=" + exclude +
+                ", source='" + source + '\'' +
+                ", reason='" + reason + '\'' +
+                '}';
+    }
+}

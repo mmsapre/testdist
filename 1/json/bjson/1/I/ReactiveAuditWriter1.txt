@@ -64,4 +64,27 @@ public class ReactiveAuditWriter {
                 .doOnError(e -> System.err.println("❌ Audit failed: " + e.getMessage()))
                 .then();
     }
+
+
+public int updateLatest(String dataKey,
+                        Long loadRowId,
+                        String state,
+                        String publishMessage) {
+
+    String sql = """
+        UPDATE %s
+        SET state = ?,
+            publish_message = ?
+        WHERE id = (
+            SELECT id
+            FROM %s
+            WHERE data_key = ?
+              AND load_row_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        )
+    """.formatted(table, table);
+
+    return jdbcTemplate.update(sql, state, publishMessage, dataKey, loadRowId);
+}
 }

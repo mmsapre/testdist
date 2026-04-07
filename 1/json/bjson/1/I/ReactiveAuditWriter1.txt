@@ -1,0 +1,67 @@
+package com.hsbc.gbm.hss.mrd.distribution.audit;
+
+import org.springframework.r2dbc.core.DatabaseClient;
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+
+public class ReactiveAuditWriter {
+
+    private final DatabaseClient databaseClient;
+    private final String table;
+
+    public ReactiveAuditWriter(DatabaseClient databaseClient, String table) {
+        this.databaseClient = databaseClient;
+        this.table = table;
+    }
+
+    public Mono<Void> write(Map<String, Object> ctx,
+                           String payload,
+                           String action,
+                           String dataKey,
+                           String serviceName,
+                           String state) {
+
+        String sql = """
+            INSERT INTO %s (
+                id,
+                load_row_id,
+                data_key,
+                service_name,
+                audit,
+                state,
+                publish_message,
+                request_id,
+                created_at
+            )
+            VALUES (
+                gen_random_uuid(),
+                :loadRowId,
+                :dataKey,
+                :serviceName,
+                :audit,
+                :state,
+                :publishMessage,
+                :requestId,
+                :createdAt
+            )
+        """.formatted(table);
+
+        return databaseClient.sql(sql)
+                .bind("loadRowId", ctx.getOrDefault("loadRowId", 0))
+                .bind("dataKey", dataKey)
+                .bind("serviceName", serviceName)
+                .bind("audit", ctx.toString()) // can convert to JSON
+                .bind("state", state)
+                .bind("publishMessage", payload)
+                .bind("requestId", UUID.randomUUID().toString())
+                .bind("createdAt", Instant.now())
+                .fetch()
+                .rowsUpdated()
+                .doOnSuccess(r -> System.out.println("✅ Audit written"))
+                .doOnError(e -> System.err.println("❌ Audit failed: " + e.getMessage()))
+                .then();
+    }
+}

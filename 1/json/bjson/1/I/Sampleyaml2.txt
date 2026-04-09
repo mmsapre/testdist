@@ -1,0 +1,67 @@
+{
+  "seq":[
+
+    /*
+     ===========================
+     1. EXTRACT
+     ===========================
+     */
+    { "extract":["source", "$.Account.source"] },
+    { "extract":["type", "$.Account.type"] },
+    { "extract":["number", "$.Account.number"] },
+    { "extract":["mrdId", "$.Account.mrdId"] },
+    { "extract":["region", "$.Account.region"] },
+
+    /*
+     ===========================
+     2. TYPE CHECK
+     ===========================
+     */
+    {
+      "if":[
+        {
+          "or":[
+            { "==":[ { "ctx":"type" }, "SEC" ] },
+            { "==":[ { "ctx":"type" }, "CASH" ] }
+          ]
+        },
+        null,
+        "PASS"
+      ]
+    },
+
+    /*
+     ===========================
+     3. REGION CHECK
+     ===========================
+     */
+    {
+      "if":[
+        {
+          "or":[
+            { "==":[ { "ctx":"region" }, "HBEU" ] },
+            { "==":[ { "ctx":"region" }, "HBFR" ] }
+          ]
+        },
+        null,
+        "PASS"
+      ]
+    },
+
+    /*
+     ===========================
+     4. DSL CHECK
+     ===========================
+     */
+    {
+      "if":[
+        { "dsl":"SEC_ACC_LOOKUP" },
+
+        "FILTER",
+
+        "PASS"
+      ]
+    }
+
+  ]
+}

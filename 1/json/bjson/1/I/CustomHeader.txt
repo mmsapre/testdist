@@ -1,0 +1,35 @@
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+public class CustomHeader {
+    private final Map<String, Object> entries = new HashMap<>();
+
+    public CustomHeader set(String key, Object value) {
+        this.entries.put(key, value);
+        return this; 
+    }
+
+    public <T> Optional<T> get(String key, Class<T> type) {
+        return Optional.ofNullable(entries.get(key))
+                       .filter(type::isInstance)
+                       .map(type::cast);
+    }
+
+    public boolean has(String key) {
+        return entries.containsKey(key);
+    }
+
+    /**
+     * Returns an immutable snapshot of all headers.
+     */
+    public Map<String, Object> getAllHeaders() {
+        // Option A: Java 10+ (Recommended)
+        // Returns a truly unmodifiable copy.
+        return Map.copyOf(entries);
+        
+        // Option B: Java 8 (Fallback)
+        // return Collections.unmodifiableMap(new HashMap<>(entries));
+    }
+}

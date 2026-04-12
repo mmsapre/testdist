@@ -52,6 +52,24 @@ public class DistributionStateJdbcDao {
         return jdbcTemplate.queryForObject(sql, rowMapper, serviceId);
     }
 
+public int updateState(String serviceId, String hostName, String state) {
+
+    String sql = """
+        UPDATE distribution_states
+        SET state = ?, created_at = CURRENT_TIMESTAMP
+        WHERE id = (
+            SELECT id FROM distribution_states
+            WHERE distribution_service_id = ?
+              AND host_name = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        )
+    """;
+
+    return jdbcTemplate.update(sql, state, serviceId, hostName);
+}
+
+
     // 🔥 ROW MAPPER
     private final RowMapper<DdsDistributionStates> rowMapper = new RowMapper<>() {
         @Override

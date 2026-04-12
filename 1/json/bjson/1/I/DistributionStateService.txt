@@ -1,0 +1,21 @@
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class DistributionStateService {
+
+    private final DistributionStateJdbcDao dao;
+
+    public DistributionStateService(DistributionStateJdbcDao dao) {
+        this.dao = dao;
+    }
+
+    public void saveState(String serviceId, String host, String state) {
+        dao.insert(serviceId, host, state);
+    }
+
+    public List<DdsDistributionStates> getStates(String serviceId) {
+        return dao.findByServiceId(serviceId);
+    }
+}

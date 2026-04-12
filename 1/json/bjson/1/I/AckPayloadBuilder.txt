@@ -1,0 +1,40 @@
+import java.util.*;
+
+public class AckPayloadBuilder {
+
+    public static Map<String, Object> buildAck(
+            String payload,
+            boolean isXml,
+            Map<String, Object> context,
+            SolaceAckConfig config) {
+
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        for (Map.Entry<String, AckFieldConfig> entry : config.getFields().entrySet()) {
+
+            String outputField = entry.getKey();
+            AckFieldConfig field = entry.getValue();
+
+            Object value = null;
+
+            // 🔥 CONTEXT
+            if ("context".equalsIgnoreCase(field.getSource())) {
+                value = context.get(field.getKey());
+            }
+
+            // 🔥 PAYLOAD
+            else if ("payload".equalsIgnoreCase(field.getSource())) {
+
+                if (isXml && field.getXpath() != null) {
+                    value = XmlUtil.extract(payload, field.getXpath());
+                } else if (!isXml && field.getJsonpath() != null) {
+                    value = JsonUtil.extract(payload, field.getJsonpath());
+                }
+            }
+
+            result.put(outputField, value);
+        }
+
+        return result;
+    }
+}

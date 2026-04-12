@@ -1,0 +1,71 @@
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public class DistributionStateJdbcDao {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public DistributionStateJdbcDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    // 🔥 INSERT
+    public int insert(String serviceId, String host, String state) {
+
+        String sql = """
+            INSERT INTO distribution_states
+            (distribution_service_id, host_name, state, created_at)
+            VALUES (?, ?, ?, now())
+        """;
+
+        return jdbcTemplate.update(sql, serviceId, host, state);
+    }
+
+    // 🔥 FIND ALL
+    public List<DdsDistributionStates> findByServiceId(String serviceId) {
+
+        String sql = """
+            SELECT * FROM distribution_states
+            WHERE distribution_service_id = ?
+        """;
+
+        return jdbcTemplate.query(sql, rowMapper, serviceId);
+    }
+
+    // 🔥 FIND LATEST
+    public DdsDistributionStates findLatest(String serviceId) {
+
+        String sql = """
+            SELECT * FROM distribution_states
+            WHERE distribution_service_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """;
+
+        return jdbcTemplate.queryForObject(sql, rowMapper, serviceId);
+    }
+
+    // 🔥 ROW MAPPER
+    private final RowMapper<DdsDistributionStates> rowMapper = new RowMapper<>() {
+        @Override
+        public DdsDistributionStates mapRow(ResultSet rs, int rowNum) throws SQLException {
+
+            DdsDistributionStates d = new DdsDistributionStates();
+
+            d.setId(UUID.fromString(rs.getString("id")));
+            d.setDistributionServiceId(rs.getString("distribution_service_id"));
+            d.setHostName(rs.getString("host_name"));
+            d.setState(rs.getString("state"));
+            d.setCreatedAt(rs.getTimestamp("created_at").toInstant());
+
+            return d;
+        }
+    };
+}

@@ -1,0 +1,38 @@
+mrd:
+  distribution:
+    target:
+      type: solace
+
+      ack:
+        mode: solace   # pass-through | solace
+
+        solace:
+          destination: queue/ack
+
+          fields:
+
+            # 🔥 system fields (from context, NOT payload)
+            dataKey:
+              source: context
+              key: dataKey
+
+            loadRowId:
+              source: context
+              key: loadRowId
+
+            # 🔥 extracted from CMF payload
+            mrdId:
+              source: payload
+              xpath: /account/mrdId
+
+            accountType:
+              source: payload
+              xpath: /account/type
+
+            region:
+              source: payload
+              xpath: /account/accountRegions/accountRegion/value
+
+            sourceSystem:
+              source: payload
+              jsonpath: $.account.sourceSystem

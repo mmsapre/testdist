@@ -1,0 +1,28 @@
+import org.springframework.jdbc.core.RowMapper;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.UUID;
+
+public class AuditRowMapper implements RowMapper<AuditRecord> {
+
+    @Override
+    public AuditRecord mapRow(ResultSet rs, int rowNum) throws SQLException {
+
+        AuditRecord record = new AuditRecord();
+
+        record.setId(UUID.fromString(rs.getString("id")));
+        record.setDataKey(rs.getString("data_key"));
+        record.setLoadRowId(rs.getLong("load_row_id"));
+        record.setState(rs.getString("state"));
+        record.setPayload(rs.getString("payload"));
+        record.setRetryCount(rs.getInt("retry_count"));
+
+        if (rs.getTimestamp("created_at") != null) {
+            record.setCreatedAt(rs.getTimestamp("created_at").toInstant());
+        }
+
+        return record;
+    }
+}

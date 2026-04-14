@@ -1,0 +1,15 @@
+import java.time.Instant;
+import java.util.UUID;
+
+public class AuditRecord {
+
+    private UUID id;
+    private String dataKey;
+    private Long loadRowId;
+    private String state;
+    private String payload;
+    private int retryCount;
+    private Instant createdAt;
+
+    // getters/setters
+}

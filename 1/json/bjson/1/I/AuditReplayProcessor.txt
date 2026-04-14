@@ -1,0 +1,157 @@
+package com.example.audit;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.event.EventListener;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+
+import java.util.List;
+import java.util.UUID;
+
+@Component
+public class AuditReplayProcessor {
+
+    private final JdbcTemplate jdbcTemplate;
+    private final AuditRowMapper rowMapper;
+    private final TargetPublisher publisher;
+    private final AckService ackService;
+
+    public AuditReplayProcessor(JdbcTemplate jdbcTemplate,
+                                TargetPublisher publisher,
+                                AckService ackService) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.publisher = publisher;
+        this.ackService = ackService;
+        this.rowMapper = new AuditRowMapper();
+    }
+
+    /*
+     ===========================
+     STARTUP TRIGGER
+     ===========================
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void onStartup() {
+        replayAll();
+    }
+
+    /*
+     ===========================
+     MAIN LOOP
+     ===========================
+     */
+    public void replayAll() {
+
+        while (true) {
+
+            List<AuditRecord> batch = fetchPending(100);
+
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            processBatch(batch);
+        }
+    }
+
+    /*
+     ===========================
+     FETCH WITH LOCK
+     ===========================
+     */
+    @Transactional
+    public List<AuditRecord> fetchPending(int batchSize) {
+
+        String sql = """
+            SELECT id,
+                   data_key,
+                   load_row_id,
+                   state,
+                   payload,
+                   retry_count,
+                   created_at
+            FROM audit_log
+            WHERE state IN ('PENDING_PUBLISH', 'PENDING_NOTIFICATION')
+              AND retry_count < 3
+            ORDER BY created_at ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT ?
+        """;
+
+        return jdbcTemplate.query(sql, rowMapper, batchSize);
+    }
+
+    /*
+     ===========================
+     PROCESS BATCH
+     ===========================
+     */
+    @Transactional
+    public void processBatch(List<AuditRecord> records) {
+
+        for (AuditRecord record : records) {
+            processSingle(record);
+        }
+    }
+
+    /*
+     ===========================
+     PROCESS SINGLE RECORD
+     ===========================
+     */
+    private void processSingle(AuditRecord record) {
+
+        try {
+
+            // 🔥 1. Publish (handle list payload)
+            for (String payload : record.getPayloadList()) {
+                publisher.publish(payload);
+            }
+
+            // 🔥 2. Update state
+            updateState(record.getId(), "PUBLISHED");
+
+            // 🔥 3. Send ACK
+            ackService.sendAck(record, "PUBLISHED");
+
+        } catch (Exception e) {
+
+            incrementRetry(record.getId());
+            updateState(record.getId(), "FAILED");
+        }
+    }
+
+    /*
+     ===========================
+     UPDATE STATE
+     ===========================
+     */
+    private int updateState(UUID id, String state) {
+
+        String sql = """
+            UPDATE audit_log
+            SET state = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """;
+
+        return jdbcTemplate.update(sql, state, id);
+    }
+
+    /*
+     ===========================
+     RETRY INCREMENT
+     ===========================
+     */
+    private int incrementRetry(UUID id) {
+
+        String sql = """
+            UPDATE audit_log
+            SET retry_count = retry_count + 1
+            WHERE id = ?
+        """;
+
+        return jdbcTemplate.update(sql, id);
+    }
+}

@@ -1,0 +1,86 @@
+public String buildOrderBy(MrdConnectorConfig config) {
+
+    // 🔥 1. Explicit YAML order
+    if (config.getOrderBy() != null && !config.getOrderBy().isEmpty()) {
+
+        return config.getOrderBy().stream()
+                .map(o -> o.getColumn() + " " + 
+                        (o.getDirection() == null ? "DESC" : o.getDirection()))
+                .collect(Collectors.joining(", ", " ORDER BY ", ""));
+    }
+
+    // 🔥 2. Default fallback → load_rowid
+    return " ORDER BY a.load_rowid DESC";
+}
+
+
+private List<Object> extract(MrdWhereConfig cfg, String payload) {
+
+    if (payload == null || payload.isBlank()) {
+        return Collections.emptyList();
+    }
+
+    try {
+
+        switch (cfg.getExtractor()) {
+
+            case "JSONPATH":
+
+                List<Object> jsonVals =
+                        this.jsonPathExtractor.extract(payload, cfg.getPath());
+
+                // 🔥 KEY NOT FOUND → empty
+                return (jsonVals == null || jsonVals.isEmpty())
+                        ? Collections.emptyList()
+                        : jsonVals;
+
+            case "XPATH":
+
+                payload = sanitizeXml(payload);
+
+                Document doc = DocumentBuilderFactory.newInstance()
+                        .newDocumentBuilder()
+                        .parse(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8)));
+
+                List<Object> xmlVals =
+                        this.xpathExtractor.extract(doc, cfg.getPath());
+
+                // 🔥 KEY NOT FOUND → empty
+                return (xmlVals == null || xmlVals.isEmpty())
+                        ? Collections.emptyList()
+                        : xmlVals;
+
+            default:
+                return Collections.emptyList(); // 🔥 safe fallback
+        }
+
+    } catch (Exception e) {
+
+        // 🔥 CRITICAL: key/path missing OR invalid → treat as NOT FOUND
+        log.debug("Key not found or extraction failed for param={} path={}",
+                cfg.getParam(), cfg.getPath());
+
+        return Collections.emptyList();  // 🔥 NEVER throw
+    }
+
+
+private String sanitizeXml(String payload) {
+    if (payload == null) return null;
+
+    payload = payload.trim();
+
+    // remove leading weird quotes
+    if (payload.startsWith("\"<")) {
+        payload = payload.substring(1);
+    }
+
+    if (payload.endsWith(">\"")) {
+        payload = payload.substring(0, payload.length() - 1);
+    }
+
+    return payload;
+}
+}
+
+
+

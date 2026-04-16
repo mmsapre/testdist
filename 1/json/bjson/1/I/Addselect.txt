@@ -1,0 +1,25 @@
+List<String> columns = new ArrayList<>();
+
+// 1. configured columns
+for (MrdColumnConfig c : config.getColumns()) {
+    columns.add(c.getExpr() + " AS " + c.getAlias());
+}
+
+// 2. 🔥 add skipped WHERE columns
+Set<String> existingAliases = config.getColumns().stream()
+        .map(MrdColumnConfig::getAlias)
+        .collect(Collectors.toSet());
+
+for (MrdWhereConfig w : config.getWhere()) {
+
+    if (w.isSkip()) {
+
+        String alias = w.getParam();
+
+        if (!existingAliases.contains(alias)) {
+            columns.add(w.getColumn() + " AS " + alias);
+        }
+    }
+}
+
+sql.append(String.join(", ", columns));

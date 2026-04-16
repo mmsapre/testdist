@@ -13,6 +13,31 @@ public String buildOrderBy(MrdConnectorConfig config) {
     return " ORDER BY a.load_rowid DESC";
 }
 
+public String buildOrderBy(MrdConnectorConfig config) {
+
+    // 🔥 explicit config
+    if (config.getOrderBy() != null && !config.getOrderBy().isEmpty()) {
+
+        return config.getOrderBy().stream()
+                .map(o -> o.getColumn() + " " +
+                        (o.getDirection() == null ? "DESC" : o.getDirection()))
+                .collect(Collectors.joining(", ", " ORDER BY ", ""));
+    }
+
+    // 🔥 fallback → detect load_rowid
+    Optional<String> loadCol =
+            config.getColumns().stream()
+                    .map(MrdColumnConfig::getExpr)
+                    .filter(c -> c.toLowerCase().contains("load_rowid"))
+                    .findFirst();
+
+    String alias = config.getTables().get(0).getAlias();
+
+    return loadCol
+            .map(col -> " ORDER BY " + alias + "." + col + " DESC")
+            .orElse("");
+}
+
 
 private List<Object> extract(MrdWhereConfig cfg, String payload) {
 

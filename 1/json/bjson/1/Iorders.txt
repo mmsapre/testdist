@@ -15,6 +15,39 @@ public String buildOrderBy(MrdConnectorConfig config) {
 
 public String buildOrderBy(MrdConnectorConfig config) {
 
+    // 🔥 1. Explicit YAML orderBy
+    if (config.getOrderBy() != null && !config.getOrderBy().isEmpty()) {
+
+        return config.getOrderBy().stream()
+                .map(o -> o.getColumn() + " " +
+                        (o.getDirection() == null ? "DESC" : o.getDirection()))
+                .collect(Collectors.joining(", ", " ORDER BY ", ""));
+    }
+
+    // 🔥 2. Column-level order flag (NO HARDCODE)
+    List<MrdColumnConfig> orderedCols =
+            config.getColumns().stream()
+                    .filter(MrdColumnConfig::isOrder)
+                    .toList();
+
+    if (!orderedCols.isEmpty()) {
+
+        String alias = config.getTables().get(0).getAlias();
+
+        return orderedCols.stream()
+                .map(c -> alias + "." + c.getExpr() + " " + c.getDirectionOrDefault())
+                .collect(Collectors.joining(", ", " ORDER BY ", ""));
+    }
+
+    // 🔥 3. NO DEFAULT (clean design)
+    return "";
+}
+
+
+
+
+public String buildOrderBy(MrdConnectorConfig config) {
+
     // 🔥 explicit config
     if (config.getOrderBy() != null && !config.getOrderBy().isEmpty()) {
 

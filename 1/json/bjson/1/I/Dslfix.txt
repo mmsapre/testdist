@@ -1,0 +1,74 @@
+@Override
+public Object eval(MrdJsonLogicEvaluator evaluator,
+                   MrdJsonLogicArray nodes,
+                   Object data) {
+
+    try {
+        Object inputObj = evaluator.eval(nodes.get(0), data);
+
+        if (inputObj == null) return null;
+
+        // 🔥 normalize input
+        Map<String, Object> input = resolveInput(inputObj);
+
+        String alias = (String) input.get("name");
+        String field = (String) input.getOrDefault("field", "isPermit");
+
+        Map<String, Object> ctxMap = (Map<String, Object>) data;
+
+        Map<String, Object> resultMap =
+                mrdQueryExecutor.executeByMap(alias, ctxMap);
+
+        if (resultMap == null || resultMap.isEmpty()) {
+            return false;
+        }
+
+        Object val = resultMap.get(field);
+
+        // 🔥 normalize boolean
+        if (val instanceof Boolean b) return b;
+        if (val instanceof String s) return Boolean.parseBoolean(s);
+        if (val instanceof Number n) return n.intValue() != 0;
+
+        return false;
+
+    } catch (Exception e) {
+        throw new MrdLogicEvaluationException(e);
+    }
+}
+
+
+
+private Map<String, Object> resolveInput(Object inputObj) {
+
+    // case 1: already map
+    if (inputObj instanceof Map) {
+        return (Map<String, Object>) inputObj;
+    }
+
+    // case 2: list → take first element
+    if (inputObj instanceof List<?> list && !list.isEmpty()) {
+        Object first = list.get(0);
+        if (first instanceof Map) {
+            return (Map<String, Object>) first;
+        }
+    }
+
+    // case 3: string → alias only
+    if (inputObj instanceof String s) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", s);
+        return map;
+    }
+
+    throw new RuntimeException("Invalid DSL input: " + inputObj);
+}
+
+
+
+
+
+
+
+
+

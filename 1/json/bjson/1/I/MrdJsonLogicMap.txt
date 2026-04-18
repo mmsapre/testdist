@@ -1,0 +1,26 @@
+public class MrdJsonLogicMap implements MrdJsonLogicNode {
+
+    private final Map<String, Object> value;
+
+    public MrdJsonLogicMap(JsonObject jsonObject) {
+        this.value = new HashMap<>();
+        for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
+            this.value.put(entry.getKey(), parsePrimitive(entry.getValue()));
+        }
+    }
+
+    @Override
+    public Object evaluate(Object data) {
+        return value;
+    }
+
+    private Object parsePrimitive(JsonElement el) {
+        if (el.isJsonPrimitive()) {
+            JsonPrimitive p = el.getAsJsonPrimitive();
+            if (p.isBoolean()) return p.getAsBoolean();
+            if (p.isNumber()) return p.getAsNumber();
+            if (p.isString()) return p.getAsString();
+        }
+        return el.toString();
+    }
+}

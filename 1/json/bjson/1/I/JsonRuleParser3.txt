@@ -1,0 +1,104 @@
+
+
+import com.google.gson.*;
+import java.util.*;
+
+public class JsonRuleParser {
+
+    private final Set<String> operators;
+
+    public JsonRuleParser(Set<String> operators) {
+        this.operators = operators;
+    }
+
+    public MrdJsonLogicNode parse(JsonElement jsonElement) {
+
+        // ---------- NULL ----------
+        if (jsonElement == null || jsonElement.isJsonNull()) {
+            return new MrdJsonLogicValue(null);
+        }
+
+        // ---------- PRIMITIVE ----------
+        if (jsonElement.isJsonPrimitive()) {
+            JsonPrimitive p = jsonElement.getAsJsonPrimitive();
+
+            if (p.isBoolean()) return new MrdJsonLogicValue(p.getAsBoolean());
+            if (p.isNumber()) return new MrdJsonLogicValue(p.getAsNumber());
+            return new MrdJsonLogicValue(p.getAsString());
+        }
+
+        // ---------- ARRAY ----------
+        if (jsonElement.isJsonArray()) {
+            JsonArray arr = jsonElement.getAsJsonArray();
+            List<MrdJsonLogicNode> nodes = new ArrayList<>();
+
+            for (JsonElement el : arr) {
+                nodes.add(parse(el));
+            }
+
+            return new MrdJsonLogicArray(nodes);
+        }
+
+        // ---------- OBJECT ----------
+        JsonObject obj = jsonElement.getAsJsonObject();
+
+        // 🔥 If single key AND operator → expression
+        if (obj.size() == 1) {
+            String key = obj.entrySet().iterator().next().getKey();
+
+            if (operators.contains(key)) {
+
+                JsonElement value = obj.get(key);
+                MrdJsonLogicNode node = parse(value);
+
+                MrdJsonLogicArray array =
+                        (node instanceof MrdJsonLogicArray)
+                                ? (MrdJsonLogicArray) node
+                                : new MrdJsonLogicArray(Collections.singletonList(node));
+
+                return new MrdJsonLogicExpressionNode(key, array);
+            }
+        }
+
+        // 🔥 OTHERWISE → treat as MAP (CRITICAL FIX)
+        Map<String, Object> map = new LinkedHashMap<>();
+
+        for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
+            map.put(entry.getKey(), convert(entry.getValue()));
+        }
+
+        return new MrdJsonLogicMap(map);
+    }
+
+    // ---------- helper ----------
+    private Object convert(JsonElement el) {
+
+        if (el == null || el.isJsonNull()) return null;
+
+        if (el.isJsonPrimitive()) {
+            JsonPrimitive p = el.getAsJsonPrimitive();
+
+            if (p.isBoolean()) return p.getAsBoolean();
+            if (p.isNumber()) return p.getAsNumber();
+            return p.getAsString();
+        }
+
+        if (el.isJsonArray()) {
+            List<Object> list = new ArrayList<>();
+            for (JsonElement e : el.getAsJsonArray()) {
+                list.add(convert(e));
+            }
+            return list;
+        }
+
+        if (el.isJsonObject()) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (Map.Entry<String, JsonElement> e : el.getAsJsonObject().entrySet()) {
+                map.put(e.getKey(), convert(e.getValue()));
+            }
+            return map;
+        }
+
+        return null;
+    }
+}

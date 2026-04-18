@@ -1,0 +1,21 @@
+public class StateMapper {
+
+    private static final Map<String, DistributionStates> ACTION_TO_STATE = Map.of(
+            "PASS", MrdDistributionStates.VALIDATED,
+            "FILTER", MrdDistributionStates.FILTERED,
+            "FULL_MASK", MrdDistributionStates.VAL_MASKED,
+            "PARTIAL_MASK", MrdDistributionStates.VAL_PARTIAL_MASK
+    );
+
+    public static DistributionStates map(String action) {
+
+        if (action == null) {
+            return MrdDistributionStates.VAL_FAILURE;
+        }
+
+        return ACTION_TO_STATE.getOrDefault(
+                action.toUpperCase(),
+                MrdDistributionStates.VAL_FAILURE
+        );
+    }
+}

@@ -1,0 +1,49 @@
+
+
+import java.util.Map;
+
+public class DslExpression {
+
+    private final MrdQueryExecutor mrdQueryExecutor;
+
+    public MrdDslExpression(MrdQueryExecutor executor) {
+        this.mrdQueryExecutor = executor;
+    }
+
+    @Override
+    public String key() {
+        return "dsl";
+    }
+
+    @Override
+    public Object eval(MrdJsonLogicEvaluator evaluator,
+                       MrdJsonLogicArray nodes,
+                       Object data) {
+
+        try {
+            Object inputObj = evaluator.eval(nodes.get(0), data);
+
+            if (!(inputObj instanceof Map)) {
+                throw new RuntimeException("DSL expects map input");
+            }
+
+            Map<String, Object> input = (Map<String, Object>) inputObj;
+
+            String alias = (String) input.get("name");
+            String field = (String) input.get("field");
+
+            Map<String, Object> ctx = (Map<String, Object>) data;
+
+            Map<String, Object> result =
+                    mrdQueryExecutor.executeByMap(alias, ctx);
+
+            if (result == null) return null;
+
+            // 🔥 return ONLY value
+            return result.get(field);
+
+        } catch (Exception e) {
+            throw new MrdLogicEvaluationException(e);
+        }
+    }
+}

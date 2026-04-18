@@ -15,6 +15,54 @@ public class DslExpression {
         return "dsl";
     }
 
+@Override
+public Object eval(MrdJsonLogicEvaluator evaluator,
+                   MrdJsonLogicArray nodes,
+                   Object data) {
+
+    try {
+        Object inputObj;
+
+        Object node = nodes.get(0);
+
+        // 🔥 CASE 1: already a literal MAP node → don't eval
+        if (node instanceof MrdJsonLogicMap mapNode) {
+            inputObj = mapNode; // use directly
+        }
+
+        // 🔥 CASE 2: raw Map (depending on your parser)
+        else if (node instanceof Map) {
+            inputObj = node;
+        }
+
+        // 🔥 CASE 3: expression (like var) → evaluate
+        else {
+            inputObj = evaluator.eval(node, data);
+        }
+
+        if (!(inputObj instanceof Map)) {
+            throw new RuntimeException("DSL expects map input but got: " + inputObj);
+        }
+
+        Map<String, Object> input = (Map<String, Object>) inputObj;
+
+        String alias = (String) input.get("name");
+        String field = (String) input.get("field");
+
+        Map<String, Object> ctx = (Map<String, Object>) data;
+
+        Map<String, Object> result =
+                mrdQueryExecutor.executeByMap(alias, ctx);
+
+        if (result == null) return null;
+
+        return result.get(field);
+
+    } catch (Exception e) {
+        throw new MrdLogicEvaluationException(e);
+    }
+}
+
     @Override
     public Object eval(MrdJsonLogicEvaluator evaluator,
                        MrdJsonLogicArray nodes,

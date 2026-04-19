@@ -1,0 +1,23 @@
+{
+  "if": [
+    {
+      "if": [
+        {
+          "and": [
+            { "!=": [ { "var": "grid" }, null ] },
+            { "!=": [ { "var": "grid" }, "" ] }
+          ]
+        },
+        {
+          "dsl": {
+            "name": "GRID_LOOKUP",
+            "field": "isPermit"
+          }
+        },
+        { "var": "isPermit" }
+      ]
+    },
+    "PASS",
+    "FILTER"
+  ]
+}

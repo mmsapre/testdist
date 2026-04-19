@@ -1,0 +1,23 @@
+{
+  "if": [
+    {
+      "or": [
+        { "==": [ { "var": "gridId" }, null ] },
+        { "==": [ { "var": "gridId" }, "" ] }
+      ]
+    },
+    "FILTER",
+    {
+      "if": [
+        {
+          "dsl": {
+            "name": "POI_LOOKUP",
+            "field": "permit"
+          }
+        },
+        "PASS",
+        "FILTER"
+      ]
+    }
+  ]
+}

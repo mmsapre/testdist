@@ -1,0 +1,49 @@
+{
+  "if": [
+    {
+      "==": [ { "var": "AccountType" }, "SECURITIES" ]
+    },
+    {
+      "if": [
+        {
+          "==": [
+            {
+              "dsl": {
+                "name": "SEC_ACC_LOOKUP",
+                "field": "isPermit"
+              }
+            },
+            false
+          ]
+        },
+        "PASS",
+        "FILTER"
+      ]
+    },
+    {
+      "if": [
+        {
+          "==": [ { "var": "AccountType" }, "CASH" ]
+        },
+        {
+          "if": [
+            {
+              "==": [
+                {
+                  "dsl": {
+                    "name": "CASH_ACC_LOOKUP",
+                    "field": "isPermit"
+                  }
+                },
+                false
+              ]
+            },
+            "PASS",
+            "FILTER"
+          ]
+        },
+        "FILTER"
+      ]
+    }
+  ]
+}
